@@ -1,0 +1,25 @@
+---
+import { getCollection, render } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+export async function getStaticPaths() {
+  const editions = await getCollection("daily", ({ data }) => data.status === "published");
+  return editions.map((edition) => ({ params: { slug: edition.id }, props: { edition } }));
+}
+const { edition } = Astro.props;
+const { Content } = await render(edition);
+const date = edition.data.date.toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+---
+
+<BaseLayout title={`${edition.data.title} · AI Daily Brief`} description={edition.data.description}>
+  <article class="edition">
+    <a class="back-link" href={import.meta.env.BASE_URL}>← All editions</a>
+    <header class="edition-header">
+      <p class="eyebrow">{date} · {edition.data.readingMinutes} MIN READ</p>
+      <h1>{edition.data.title}</h1>
+      <p class="dek">{edition.data.description}</p>
+      <div class="topic-row">{edition.data.topics.map((topic) => <span>{topic}</span>)}</div>
+    </header>
+    <div class="article-body"><Content /></div>
+  </article>
+</BaseLayout>

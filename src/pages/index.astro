@@ -1,0 +1,28 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const editions = (await getCollection("daily", ({ data }) => data.status === "published"))
+  .sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
+const latest = editions[0];
+const formatDate = (date: Date) => date.toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+---
+
+<BaseLayout description="A focused daily briefing on the news shaping AI.">
+  <section class="hero">
+    <p class="eyebrow">THE DAILY SIGNAL</p>
+    <h1>AI news, distilled.<br /><em>Insight, not noise.</em></h1>
+    <p class="hero-copy">Ten important developments, carefully researched and connected into one readable daily edition.</p>
+  </section>
+  {latest ? (
+    <section class="latest">
+      <p class="eyebrow">LATEST EDITION · {formatDate(latest.data.date)}</p>
+      <a class="feature-card" href={`${import.meta.env.BASE_URL}daily/${latest.id}/`}>
+        <span class="feature-number">01</span>
+        <div><h2>{latest.data.title}</h2><p>{latest.data.description}</p><span class="read-link">Read the edition <b>→</b></span></div>
+        <span class="reading-time">{latest.data.readingMinutes} min</span>
+      </a>
+    </section>
+  ) : <p class="empty-state">The first edition is being prepared.</p>}
+  {editions.length > 1 && <section class="archive"><p class="eyebrow">EARLIER EDITIONS</p>{editions.slice(1).map((edition) => <a href={`${import.meta.env.BASE_URL}daily/${edition.id}/`}><time>{formatDate(edition.data.date)}</time><span>{edition.data.title}</span><small>{edition.data.readingMinutes} min →</small></a>)}</section>}
+</BaseLayout>

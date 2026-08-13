@@ -1,0 +1,51 @@
+---
+import "../styles/global.css";
+
+interface Props { title?: string; description?: string }
+const { title = "AI Daily Brief", description = "A thoughtful daily AI news briefing." } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#14251f" />
+    <meta name="description" content={description} />
+    <link rel="icon" href={`${import.meta.env.BASE_URL}icons/icon.svg`} type="image/svg+xml" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="wordmark" href={import.meta.env.BASE_URL}>AI Daily <span>Brief</span></a>
+      <button class="theme-toggle" type="button" aria-label="Toggle colour theme" title="Toggle colour theme">◐</button>
+    </header>
+    <main><slot /></main>
+    <footer>One considered edition a day · Built for unhurried reading</footer>
+    <script>
+      const key = "ai-brief-theme";
+      const toggle = document.querySelector(".theme-toggle");
+      const apply = (theme: string) => document.documentElement.dataset.theme = theme;
+      const stored = localStorage.getItem(key);
+      if (stored) apply(stored);
+      toggle?.addEventListener("click", () => {
+        const next = document.documentElement.dataset.theme === "night" ? "day" : "night";
+        apply(next); localStorage.setItem(key, next);
+      });
+    </script>
+    <script>
+      const diagrams = document.querySelectorAll("pre > code.language-mermaid");
+      if (diagrams.length) {
+        const { default: mermaid } = await import("mermaid");
+        mermaid.initialize({ startOnLoad: false, theme: "neutral", securityLevel: "strict" });
+        for (const [index, code] of diagrams.entries()) {
+          const target = document.createElement("div");
+          target.className = "mermaid-diagram";
+          code.parentElement?.replaceWith(target);
+          try { const result = await mermaid.render(`diagram-${index}`, code.textContent ?? ""); target.innerHTML = result.svg; }
+          catch { target.textContent = "Diagram could not be rendered."; }
+        }
+      }
+    </script>
+  </body>
+</html>

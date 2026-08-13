@@ -1,0 +1,28 @@
+{
+  "name": "ai-news-daily",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.19.0",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro check && astro build",
+    "preview": "astro preview",
+    "generate:daily": "node scripts/generate-daily.mjs",
+    "publish:daily": "bash scripts/publish-daily.sh"
+  },
+  "dependencies": {
+    "@astrojs/mdx": "^4.3.0",
+    "@vite-pwa/astro": "^1.1.0",
+    "astro": "^5.14.0",
+    "katex": "^0.16.22",
+    "mermaid": "^11.10.1",
+    "rehype-katex": "^7.0.1",
+    "remark-math": "^6.0.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.4",
+    "typescript": "^5.9.2"
+  }
+}

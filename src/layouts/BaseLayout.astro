@@ -18,7 +18,10 @@ const { title = "AI Daily Brief", description = "A thoughtful daily AI news brie
   <body>
     <header class="site-header">
       <a class="wordmark" href={import.meta.env.BASE_URL}>AI Daily <span>Brief</span></a>
-      <button class="theme-toggle" type="button" aria-label="Toggle colour theme" title="Toggle colour theme">◐</button>
+      <div class="header-actions">
+        <a class="browse-link" href={`${import.meta.env.BASE_URL}topics/`}>Explore</a>
+        <button class="theme-toggle" type="button" aria-label="Toggle colour theme" title="Toggle colour theme">◐</button>
+      </div>
     </header>
     <main><slot /></main>
     <footer>One considered edition a day · Built for unhurried reading</footer>

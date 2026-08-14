@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 /** Creates an OKF-inspired daily knowledge bundle from two agent passes. */
-import { mkdir, readFile, writeFile, access } from "node:fs/promises";
+import { mkdir, readFile, writeFile, access, mkdtemp, rename, rm } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const editorialRoot = process.env.NEWS_EDITORIAL_REPO ?? process.env.EDITORIAL_REPO;
+if (!editorialRoot) throw new Error("Set NEWS_EDITORIAL_REPO to the private editorial repository working tree; refusing to write the public site.");
+const repository = resolve(editorialRoot);
+if (repository === resolve(root) || repository.startsWith(`${resolve(root)}/`)) throw new Error("NEWS_EDITORIAL_REPO must be outside the public ai-news-daily repository.");
 const dateArg = process.argv.find((arg) => arg.startsWith("--date="))?.slice(7);
 const date = dateArg ?? new Intl.DateTimeFormat("en-CA", { timeZone: process.env.NEWS_TIMEZONE ?? "Australia/Sydney" }).format(new Date());
 if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Use --date=YYYY-MM-DD.");
@@ -17,9 +21,9 @@ const writerModel = process.env.NEWS_WRITER_MODEL ?? "gpt-5.6-sol";
 const preferences = await readFile(join(root, "prompts/preferences.md"), "utf8");
 const generatedAt = new Date().toISOString();
 const categories = ["Models & research", "Products & deployment", "Business & markets", "Infrastructure & compute", "Policy & governance", "Safety & society", "Science & applications", "Open source"];
-const destination = join(root, "content/daily", `${date}.md`);
+const destination = join(repository, "drafts", date);
 
-try { await access(destination); throw new Error(`${destination} already exists; refusing to overwrite an edition.`); }
+try { await access(destination); throw new Error(`${destination} already exists; refusing to overwrite or merge an editorial bundle.`); }
 catch (error) { if (error.code !== "ENOENT") throw error; }
 
 function run(command, args) {
@@ -98,18 +102,26 @@ const allSources = stories.flatMap((story) => story.sources).slice(0, 30);
 const title = `AI Daily Brief — ${new Date(`${date}T12:00:00Z`).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}`;
 const dailyDocument = `---\ntype: Daily Brief\ntitle: ${yaml(title)}\ndescription: ${yaml("Ten consequential AI developments and the deeper pattern behind them.")}\ndate: ${date}\nreadingMinutes: ${readingMinutes}\ncategories: ${JSON.stringify(allCategories)}\ntags: ${JSON.stringify(allTags)}\nsources:\n${sourceFrontmatter(allSources)}\ngenerated: { by: ${yaml(`${writerAgent}/${writerModel}`)}, at: ${yaml(generatedAt)} }\nstatus: draft\nstale_after: ${date}\nnews: ${JSON.stringify(storyIds)}\n---\n\n${body}\n`;
 
-await mkdir(join(root, "content/news"), { recursive: true });
+await mkdir(join(repository, "drafts"), { recursive: true });
+const staging = await mkdtemp(join(repository, "drafts", `.${date}.`));
+try {
+await mkdir(join(staging, "news"), { recursive: true });
 for (const [index, story] of stories.entries()) {
   const id = storyIds[index];
-  const file = join(root, "content/news", `${id}.md`);
-  try { await access(file); throw new Error(`${file} already exists; refusing to overwrite it.`); }
-  catch (error) { if (error.code !== "ENOENT") throw error; }
+  const file = join(staging, "news", `${id}.md`);
   const related = stories.map((candidate, candidateIndex) => ({ candidate, candidateIndex, shared: candidate.tags.filter((tag) => story.tags.includes(tag)).length + candidate.categories.filter((category) => story.categories.includes(category)).length })).filter(({ candidateIndex, shared }) => candidateIndex !== index && shared > 0).sort((a, b) => b.shared - a.shared).slice(0, 3);
-  const relatedLinks = related.length ? `\n## Related coverage\n\n${related.map(({ candidate, candidateIndex }) => `- [${candidate.title}](../${storyIds[candidateIndex]}/)`).join("\n")}\n` : "";
+  const relatedLinks = related.length ? `\n## Related coverage\n\n${related.map(({ candidate, candidateIndex }) => `- [${candidate.title}](./${storyIds[candidateIndex]}.md)`).join("\n")}\n` : "";
   const sourceLinks = story.sources.map((source) => `- [${source.title ?? source.resource}](${source.resource})`).join("\n");
   const storyDocument = `---\ntype: AI News\ntitle: ${yaml(story.title)}\ndescription: ${yaml(story.description)}\ndate: ${date}\nsummary: ${yaml(story.summary)}\ncategories: ${JSON.stringify(story.categories)}\ntags: ${JSON.stringify(story.tags)}\nsources:\n${sourceFrontmatter(story.sources)}\ngenerated: { by: ${yaml(`${researchAgent}/${researchModel}`)}, at: ${yaml(generatedAt)} }\nstatus: draft\nstale_after: ${date}\n---\n\n## Summary\n\n${story.summary}\n\n## Why it matters\n\n${story.why}\n${relatedLinks}\n## Sources\n\n${sourceLinks}\n`;
   await writeFile(file, storyDocument, "utf8");
 }
-await mkdir(join(root, "content/daily"), { recursive: true });
-await writeFile(destination, dailyDocument, "utf8");
-console.log(`Created one daily brief and ten linked news concepts for ${date}. Review them, then run NEWS_REVIEWER=human:your-id pnpm publish:daily.`);
+await writeFile(join(staging, "daily.md"), dailyDocument, "utf8");
+const manifest = { schema: "ai-news-daily/editorial-draft/v1", date, status: "draft", daily: "daily.md", news: storyIds.map((id) => `news/${id}.md`), files: ["daily.md", ...storyIds.map((id) => `news/${id}.md`)], generatedAt };
+await writeFile(join(staging, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+await run(process.execPath, [join(root, "scripts/validate-editorial-draft.mjs"), `--bundle=${staging}`, `--date=${date}`]);
+await rename(staging, destination);
+} catch (error) {
+  await rm(staging, { recursive: true, force: true });
+  throw error;
+}
+console.log(`Created one daily brief and ten linked news concepts for ${date} in ${destination}.`);

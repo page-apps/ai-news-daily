@@ -1,0 +1,14 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ReviewWorkspace from "../../components/ReviewWorkspace.astro";
+import "./review.css";
+---
+
+<BaseLayout title="Review · AI Daily Brief" description="Private editorial review workspace for AI Daily Brief.">
+  <ReviewWorkspace />
+</BaseLayout>
+
+<script>
+  import { mountReviewController } from "../../lib/review-controller";
+  mountReviewController();
+</script>

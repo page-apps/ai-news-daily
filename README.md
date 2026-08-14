@@ -15,22 +15,23 @@ Categories are deliberately limited to eight stable reader-facing groups: Models
 
 ## First-time setup
 
-1. Create an empty GitHub repository, add it as `origin`, and push `main`.
-2. In the repository’s **Settings → Pages**, set **Source** to **GitHub Actions**.
-3. Install dependencies with `pnpm install` and authenticate the CLI you plan to use (`codex` or `copilot`).
-4. Edit `prompts/preferences.md` to establish the editorial lens you want.
+1. Create a private `OWNER/ai-news-daily-editorial` repository for generated drafts, and a public `OWNER/ai-news-daily` repository for this PWA and approved editions.
+2. In the public repository’s **Settings → Pages**, set **Source** to **GitHub Actions**.
+3. Set public repository variables: `NEWS_EDITORIAL_REPOSITORY`, `NEWS_REVIEWER_LOGIN`, and optionally `NEWS_EDITORIAL_BRANCH` / `NEWS_PUBLIC_BRANCH`. These are repository names and a GitHub login—not secrets.
+4. Install dependencies with `pnpm install`, then edit `prompts/preferences.md` to establish the editorial lens you want.
 
-The deploy workflow only builds public Markdown already in the repository. Research is intentionally run on your own machine, so your coding-agent credentials never enter GitHub Actions.
+The deploy workflow only builds stable Markdown already in the public repository. Research credentials and draft text never enter GitHub Actions or the Pages artifact.
 
 ## Daily editorial run
 
-The default is a two-pass Codex workflow: `gpt-5.6-luna` finds and validates the day’s ten stories cheaply; `gpt-5.6-sol` researches their implications and writes the edition.
+The default is a two-pass Codex workflow: `gpt-5.6-luna` finds and validates the day’s ten stories cheaply; `gpt-5.6-sol` researches their implications and writes the edition. It writes one isolated draft bundle to the private editorial checkout.
 
 ```sh
-pnpm generate:daily
-# Review the daily brief and ten files in content/news/YYYY-MM-DD-*.md.
-NEWS_REVIEWER=human:your-id pnpm publish:daily
+NEWS_EDITORIAL_REPO=/absolute/path/to/ai-news-daily-editorial pnpm generate:daily
+NEWS_EDITORIAL_REPO=/absolute/path/to/ai-news-daily-editorial pnpm publish:draft -- --date=YYYY-MM-DD
 ```
+
+The local cron can run both commands. Human review happens at `/review/` in the deployed app, never in the terminal.
 
 Use GitHub Copilot CLI for either pass by setting `NEWS_RESEARCH_AGENT=copilot` or `NEWS_WRITER_AGENT=copilot`. The models and timezone are all configurable:
 
@@ -41,15 +42,19 @@ NEWS_TIMEZONE=Australia/Sydney \
 pnpm generate:daily
 ```
 
-For a daily cron job at 6:30am Sydney time, use an absolute project path and leave the review/publish step as a deliberate second action:
+For a daily cron job at 6:30am Sydney time, use absolute paths to both checkouts:
 
 ```cron
-30 6 * * * cd /path/to/ai-news-daily && /usr/local/bin/pnpm generate:daily >> /tmp/ai-news-daily.log 2>&1
+30 6 * * * cd /path/to/ai-news-daily && NEWS_EDITORIAL_REPO=/path/to/ai-news-daily-editorial /usr/local/bin/pnpm generate:daily && NEWS_EDITORIAL_REPO=/path/to/ai-news-daily-editorial /usr/local/bin/pnpm publish:draft -- --date=$(date +\%F) >> /tmp/ai-news-daily.log 2>&1
 ```
 
-`publish:daily` is the deliberate review action: it upgrades the day's eleven reviewed concepts from `draft` to `stable`, records the human verifier and commits/pushes only those content files. It refuses to publish without `NEWS_REVIEWER=human:...`.
+## Browser approval
 
-If you prefer fully unattended publication, replace the review script with a machine-verification policy of your own. The default intentionally does not imply that a model output has received human review.
+Open `/review/` and connect a fine-grained, expiring GitHub PAT. It must cover only the editorial and public repositories with **Contents: read and write**. The token is kept in the current browser tab by default and is never sent to the build or placed in a URL.
+
+The page verifies the configured GitHub login, loads the newest private draft, and lets you correct its title, summary, categories, tags and source links. **Approve & publish** records `human:<GitHub login>` verification, promotes all eleven concepts to `stable` in a single public-repository commit, and triggers Pages deployment. Revision conflicts are shown instead of silently overwriting a newer draft.
+
+Read [REVIEW-ARCHITECTURE.md](docs/REVIEW-ARCHITECTURE.md) for the transaction and security model.
 
 ## Writing an edition by hand
 

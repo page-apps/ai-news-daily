@@ -29,11 +29,11 @@ jobs:
         env:
           GITHUB_ACTIONS: "true"
           GITHUB_REPOSITORY: ${{ github.repository }}
-          PUBLIC_NEWS_EDITORIAL_REPOSITORY: ${{ vars.NEWS_EDITORIAL_REPOSITORY }}
+          PUBLIC_NEWS_EDITORIAL_REPOSITORY: ${{ vars.NEWS_EDITORIAL_REPOSITORY || 'page-apps/ai-news-daily-editorial' }}
           PUBLIC_NEWS_PUBLIC_REPOSITORY: ${{ github.repository }}
-          PUBLIC_NEWS_REVIEWER_LOGIN: ${{ vars.NEWS_REVIEWER_LOGIN }}
-          PUBLIC_NEWS_EDITORIAL_BRANCH: ${{ vars.NEWS_EDITORIAL_BRANCH }}
-          PUBLIC_NEWS_PUBLIC_BRANCH: ${{ vars.NEWS_PUBLIC_BRANCH }}
+          PUBLIC_NEWS_REVIEWER_LOGIN: ${{ vars.NEWS_REVIEWER_LOGIN || 'cmwen' }}
+          PUBLIC_NEWS_EDITORIAL_BRANCH: ${{ vars.NEWS_EDITORIAL_BRANCH || 'main' }}
+          PUBLIC_NEWS_PUBLIC_BRANCH: ${{ vars.NEWS_PUBLIC_BRANCH || 'main' }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

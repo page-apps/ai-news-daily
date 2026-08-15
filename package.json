@@ -10,7 +10,7 @@
     "prebuild": "pnpm --filter @repo-apps/credentials build && pnpm --filter @repo-apps/repo-client build",
     "build": "astro check && astro build && node scripts/validate-build.mjs",
     "preview": "astro preview",
-    "generate:daily": "node scripts/generate-daily.mjs",
+    "generate:daily": "bash scripts/generate-daily.sh",
     "publish:daily": "bash scripts/publish-daily.sh",
     "publish:draft": "bash scripts/publish-editorial-draft.sh"
   },

@@ -19,6 +19,7 @@ Categories are deliberately limited to eight stable reader-facing groups: Models
 2. In the public repository’s **Settings → Pages**, set **Source** to **GitHub Actions**.
 3. Set public repository variables: `NEWS_EDITORIAL_REPOSITORY`, `NEWS_REVIEWER_LOGIN`, and optionally `NEWS_EDITORIAL_BRANCH` / `NEWS_PUBLIC_BRANCH`. These are repository names and a GitHub login—not secrets.
 4. Install dependencies with `pnpm install`, then edit `prompts/preferences.md` to establish the editorial lens you want.
+5. Copy `.env.example` to `.env` and set the two repository names plus your GitHub login. `.env` is ignored and is loaded by the daily generator locally.
 
 The deploy workflow only builds stable Markdown already in the public repository. Research credentials and draft text never enter GitHub Actions or the Pages artifact.
 
@@ -27,8 +28,8 @@ The deploy workflow only builds stable Markdown already in the public repository
 The default is a two-pass Codex workflow: `gpt-5.6-luna` finds and validates the day’s ten stories cheaply; `gpt-5.6-sol` researches their implications and writes the edition. It writes one isolated draft bundle to the private editorial checkout.
 
 ```sh
-NEWS_EDITORIAL_REPO=/absolute/path/to/ai-news-daily-editorial pnpm generate:daily
-NEWS_EDITORIAL_REPO=/absolute/path/to/ai-news-daily-editorial pnpm publish:draft -- --date=YYYY-MM-DD
+pnpm generate:daily
+pnpm publish:draft -- --date=YYYY-MM-DD
 ```
 
 The local cron can run both commands. Human review happens at `/review/` in the deployed app, never in the terminal.
@@ -45,7 +46,7 @@ pnpm generate:daily
 For a daily cron job at 6:30am Sydney time, use absolute paths to both checkouts:
 
 ```cron
-30 6 * * * cd /path/to/ai-news-daily && NEWS_EDITORIAL_REPO=/path/to/ai-news-daily-editorial /usr/local/bin/pnpm generate:daily && NEWS_EDITORIAL_REPO=/path/to/ai-news-daily-editorial /usr/local/bin/pnpm publish:draft -- --date=$(date +\%F) >> /tmp/ai-news-daily.log 2>&1
+30 6 * * * cd /path/to/ai-news-daily && /usr/local/bin/pnpm generate:daily && /usr/local/bin/pnpm publish:draft -- --date=$(date +\%F) >> /tmp/ai-news-daily.log 2>&1
 ```
 
 ## Browser approval

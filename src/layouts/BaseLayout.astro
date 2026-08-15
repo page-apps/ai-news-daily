@@ -13,6 +13,7 @@ const { title = "AI Daily Brief", description = "A thoughtful daily AI news brie
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#14251f" />
     <meta name="description" content={description} />
+    <link rel="manifest" href={`${baseUrl}manifest.webmanifest`} />
     <link rel="icon" href={`${baseUrl}icons/icon.svg`} type="image/svg+xml" />
     <title>{title}</title>
   </head>
@@ -42,6 +43,15 @@ const { title = "AI Daily Brief", description = "A thoughtful daily AI news brie
       import { hasAvailableNewsCredential } from "../lib/github-repositories";
       const reviewLink = document.querySelector<HTMLElement>("[data-review-link]");
       if (reviewLink && await hasAvailableNewsCredential()) reviewLink.hidden = false;
+    </script>
+    <script>
+      const manifestLink = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+      const pwaBase = manifestLink?.href.replace(/manifest\.webmanifest(?:\?.*)?$/, "") ?? "/";
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          void navigator.serviceWorker.register(`${pwaBase}sw.js`, { scope: pwaBase });
+        }, { once: true });
+      }
     </script>
     <script>
       const diagrams = document.querySelectorAll("pre > code.language-mermaid");

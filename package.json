@@ -7,7 +7,7 @@
   "engines": { "node": ">=20" },
   "scripts": {
     "dev": "astro dev",
-    "prebuild": "pnpm --filter @repo-apps/credentials build && pnpm --filter @repo-apps/repo-client build",
+    "prebuild": "pnpm --filter @repo-apps/credentials build && pnpm --filter @repo-apps/repo-client build && pnpm --filter @repo-apps/ui build",
     "build": "astro check && astro build && node scripts/validate-build.mjs",
     "preview": "astro preview",
     "generate:daily": "bash scripts/generate-daily.sh",
@@ -17,6 +17,7 @@
   "dependencies": {
     "@repo-apps/credentials": "workspace:*",
     "@repo-apps/repo-client": "workspace:*",
+    "@repo-apps/ui": "workspace:*",
     "@astrojs/mdx": "^4.3.0",
     "@vite-pwa/astro": "^1.1.0",
     "astro": "^5.14.0",

@@ -24,6 +24,17 @@ function client(fetch) {
   });
 }
 
+test("account verification stays behind the repository client", async () => {
+  let request;
+  const api = client(async (url, init) => {
+    request = { url, init };
+    return response(200, { login: "cmwen" });
+  });
+  assert.deepEqual(await api.verifyAccount(), { login: "cmwen" });
+  assert.equal(request.url, "https://api.github.com/user");
+  assert.equal(request.init.headers.Authorization, "Bearer github_pat_secret_12345678");
+});
+
 test("all file operations are target-bound and decode unicode content", async () => {
   let request;
   const api = client(async (url, init) => {

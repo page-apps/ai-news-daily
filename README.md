@@ -51,9 +51,11 @@ For a daily cron job at 6:30am Sydney time, use absolute paths to both checkouts
 
 ## Browser approval
 
-Open `/review/` and connect a fine-grained, expiring GitHub PAT. It must cover only the editorial and public repositories with **Contents: read and write**. The token is kept in the current browser tab by default and is never sent to the build or placed in a URL.
+Set up a fine-grained, expiring GitHub PAT once in the [Page Apps hub](https://page-apps.github.io/). It must cover both `page-apps/ai-news-daily-editorial` and `page-apps/ai-news-daily` with **Contents: read and write**. Because the hub and this project page share the `page-apps.github.io` origin, AI Daily can discover that credential without putting it in a URL or build artifact. The first visit to `/review/` asks for explicit permission to use the shared PAT; later visits reconnect automatically after that app registration. A tab-only PAT remains available as a fallback.
 
-The page verifies the configured GitHub login, loads the newest private draft, and lets you correct its title, summary, categories, tags and source links. **Approve & publish** records `human:<GitHub login>` verification, promotes all eleven concepts to `stable` in a single public-repository commit, and triggers Pages deployment. Revision conflicts are shown instead of silently overwriting a newer draft.
+When a hub or app credential is available, a **Review** link appears in the site header. The review page independently verifies the configured GitHub login and read/write access to both repositories, then loads the newest private draft. You review one complete daily article—not ten story cards—with the full body and citation list visible. Title, introduction, article Markdown, categories, tags and sources remain editable. The ten supporting news concepts are retained for connected-news navigation and publish automatically with the article.
+
+**Approve article & publish** first saves your edits to the private draft, then records `human:<GitHub login>` verification, promotes the daily article and its ten supporting concepts to `stable` in one public-repository commit, and triggers Pages deployment. The UI reports each phase and the resulting commit. Revision conflicts are shown instead of silently overwriting a newer draft.
 
 Read [REVIEW-ARCHITECTURE.md](docs/REVIEW-ARCHITECTURE.md) for the transaction and security model.
 

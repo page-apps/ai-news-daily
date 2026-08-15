@@ -2,6 +2,7 @@
 import { getCollection } from "astro:content";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { toSlug } from "../lib/taxonomy";
+import { withBase } from "../lib/base-url";
 
 const editions = (await getCollection("daily", ({ data }) => data.status === "stable"))
   .sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
@@ -18,13 +19,13 @@ const formatDate = (date: Date) => date.toLocaleDateString("en-AU", { weekday: "
   {latest ? (
     <section class="latest">
       <p class="eyebrow">LATEST EDITION · {formatDate(latest.data.date)}</p>
-      <a class="feature-card" href={`${import.meta.env.BASE_URL}daily/${latest.id}/`}>
+      <a class="feature-card" href={withBase(`daily/${latest.id}/`)}>
         <span class="feature-number">01</span>
         <div><h2>{latest.data.title}</h2><p>{latest.data.description}</p><span class="read-link">Read the edition <b>→</b></span></div>
         <span class="reading-time">{latest.data.readingMinutes} min</span>
       </a>
-      <div class="topic-row">{latest.data.categories.map((category) => <a href={`${import.meta.env.BASE_URL}topics/category/${toSlug(category)}/`}>{category}</a>)}</div>
+      <div class="topic-row">{latest.data.categories.map((category) => <a href={withBase(`topics/category/${toSlug(category)}/`)}>{category}</a>)}</div>
     </section>
   ) : <p class="empty-state">The first edition is being prepared.</p>}
-  {editions.length > 1 && <section class="archive"><p class="eyebrow">EARLIER EDITIONS</p>{editions.slice(1).map((edition) => <a href={`${import.meta.env.BASE_URL}daily/${edition.id}/`}><time>{formatDate(edition.data.date)}</time><span>{edition.data.title}</span><small>{edition.data.readingMinutes} min →</small></a>)}</section>}
+  {editions.length > 1 && <section class="archive"><p class="eyebrow">EARLIER EDITIONS</p>{editions.slice(1).map((edition) => <a href={withBase(`daily/${edition.id}/`)}><time>{formatDate(edition.data.date)}</time><span>{edition.data.title}</span><small>{edition.data.readingMinutes} min →</small></a>)}</section>}
 </BaseLayout>

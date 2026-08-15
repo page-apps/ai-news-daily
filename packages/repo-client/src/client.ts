@@ -17,6 +17,7 @@ import type {
   FetchLike,
   FetchResponse,
   PagesDeploymentStatus,
+  RepositoryAccount,
   RepositoryAccess,
   RepositoryClient,
   RepositoryClientOptions,
@@ -44,6 +45,11 @@ export class GitHubRepositoryClient implements RepositoryClient {
     this.#credentials = options.credentials;
     this.#fetch = options.fetch ?? defaultFetch;
     this.#base = (options.apiBaseUrl ?? "https://api.github.com").replace(/\/$/, "");
+  }
+
+  async verifyAccount(): Promise<RepositoryAccount> {
+    const value = asRecord(await this.#request("/user"));
+    return { login: stringField(value, "login") };
   }
 
   async verifyAccess(): Promise<RepositoryAccess> {

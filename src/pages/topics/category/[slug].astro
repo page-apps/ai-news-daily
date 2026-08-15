@@ -2,6 +2,7 @@
 import { getCollection } from "astro:content";
 import BaseLayout from "../../../layouts/BaseLayout.astro";
 import { categoryDescriptions, toSlug, type Category } from "../../../lib/taxonomy";
+import { withBase } from "../../../lib/base-url";
 
 export async function getStaticPaths() { return Object.keys(categoryDescriptions).map((category) => ({ params: { slug: toSlug(category) }, props: { category } })); }
 const { category } = Astro.props as { category: Category };
@@ -9,5 +10,5 @@ const stories = (await getCollection("news", ({ data }) => data.status === "stab
 ---
 
 <BaseLayout title={`${category} · AI Daily Brief`} description={categoryDescriptions[category]}>
-  <section class="taxonomy listing"><a class="back-link" href={`${import.meta.env.BASE_URL}topics/`}>← Explore</a><p class="eyebrow">CATEGORY</p><h1>{category}</h1><p>{categoryDescriptions[category]}</p><div class="story-list">{stories.map((story) => <a href={`${import.meta.env.BASE_URL}news/${story.id}/`}><time>{story.data.date.toLocaleDateString("en-AU", { day: "numeric", month: "short" })}</time><span><strong>{story.data.title}</strong><small>{story.data.summary}</small></span><i>→</i></a>)}</div>{stories.length === 0 && <p class="empty-state">No published concepts in this category yet.</p>}</section>
+  <section class="taxonomy listing"><a class="back-link" href={withBase("topics/")}>← Explore</a><p class="eyebrow">CATEGORY</p><h1>{category}</h1><p>{categoryDescriptions[category]}</p><div class="story-list">{stories.map((story) => <a href={withBase(`news/${story.id}/`)}><time>{story.data.date.toLocaleDateString("en-AU", { day: "numeric", month: "short" })}</time><span><strong>{story.data.title}</strong><small>{story.data.summary}</small></span><i>→</i></a>)}</div>{stories.length === 0 && <p class="empty-state">No published concepts in this category yet.</p>}</section>
 </BaseLayout>

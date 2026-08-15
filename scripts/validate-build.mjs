@@ -14,6 +14,12 @@ for (const path of textAssets) {
   const value = await readFile(path, "utf8");
   if (/github_pat_[A-Za-z0-9_]{8,}/i.test(value)) throw new Error(`Credential-like PAT found in Pages artifact: ${path}`);
   if (/Example connected news concept|Draft metadata examples are excluded/i.test(value)) throw new Error(`Draft fixture leaked into Pages artifact: ${path}`);
+  if (/\/ai-news-daily(?:topics|review|icons)\//.test(value)) throw new Error(`GitHub Pages base path is missing a separator: ${path}`);
 }
 
-console.log(`Validated public review shell and ${textAssets.length} text assets without a PAT or draft fixture.`);
+const reviewHtml = await readFile(resolve(dist, "review/index.html"), "utf8");
+for (const required of ["Review one complete edition", "FULL ARTICLE", "CITATIONS", "Approve article &amp; publish"]) {
+  if (!reviewHtml.includes(required)) throw new Error(`Review artifact is missing required UI copy: ${required}`);
+}
+
+console.log(`Validated the full-article review shell and ${textAssets.length} public text assets without a PAT, draft fixture, or broken Pages path.`);

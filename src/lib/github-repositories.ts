@@ -1,13 +1,13 @@
 import {
   SessionPatCredentialProvider,
   PersistentPatCredentialProvider,
+  SharedPatCredentialProvider,
   type CredentialProvider,
   type StorageAdapter,
   type TokenRequest,
 } from "@repo-apps/credentials";
 import {
   createRepositoryClient,
-  RepositoryError,
   type RepositoryClient,
   type RepositoryTarget,
 } from "@repo-apps/repo-client";
@@ -51,19 +51,44 @@ export interface GitHubBrowserConnectionOptions {
   readonly persist?: boolean;
 }
 
+export const NEWS_REVIEW_APP_ID = "ai-news-daily";
+
 /**
  * Connects a PAT for this tab by default. Persistence is deliberately opt-in and
  * should only be passed after an explicit user consent action.
  */
 export function connectGitHubPat(options: GitHubBrowserConnectionOptions): CredentialProvider {
   const providerOptions = {
-    appId: options.appId ?? "ai-news-daily",
+    appId: options.appId ?? NEWS_REVIEW_APP_ID,
     requestToken: options.requestToken,
     ...(options.storage === undefined ? {} : { storage: options.storage }),
   };
   return options.persist
     ? new PersistentPatCredentialProvider(providerOptions)
     : new SessionPatCredentialProvider(providerOptions);
+}
+
+/** Uses the Page Apps same-origin vault without exposing its token to app code. */
+export function sharedNewsPat(requestToken: TokenRequest = async () => ""): SharedPatCredentialProvider {
+  return new SharedPatCredentialProvider({
+    appId: NEWS_REVIEW_APP_ID,
+    requestToken,
+    repositoryHint: "page-apps/ai-news-daily-editorial",
+  });
+}
+
+/** Drives the conditional Review link without reading a raw credential. */
+export async function hasAvailableNewsCredential(): Promise<boolean> {
+  try {
+    const shared = sharedNewsPat();
+    if (await shared.hasShared()) return true;
+    const session = new SessionPatCredentialProvider({ appId: NEWS_REVIEW_APP_ID, requestToken: async () => "" });
+    if (await session.get()) return true;
+    const persistent = new PersistentPatCredentialProvider({ appId: NEWS_REVIEW_APP_ID, requestToken: async () => "" });
+    return Boolean(await persistent.get());
+  } catch {
+    return false;
+  }
 }
 
 export function createNewsRepositoryClients(
@@ -79,30 +104,11 @@ export function createNewsRepositoryClients(
 /** Verifies both configured repositories before any read or write is attempted. */
 export async function verifyNewsRepositories(
   clients: ReturnType<typeof createNewsRepositoryClients>,
-): Promise<{ editorial: Awaited<ReturnType<RepositoryClient["verifyAccess"]>>; site: Awaited<ReturnType<RepositoryClient["verifyAccess"]>> }> {
-  const [editorial, site] = await Promise.all([
+): Promise<{ account: Awaited<ReturnType<RepositoryClient["verifyAccount"]>>; editorial: Awaited<ReturnType<RepositoryClient["verifyAccess"]>>; site: Awaited<ReturnType<RepositoryClient["verifyAccess"]>> }> {
+  const [account, editorial, site] = await Promise.all([
+    clients.site.verifyAccount(),
     clients.editorial.verifyAccess(),
     clients.site.verifyAccess(),
   ]);
-  return { editorial, site };
-}
-
-/** Resolve the account behind the browser credential without exposing its token to UI code. */
-export async function authenticatedGitHubLogin(credentials: CredentialProvider): Promise<string> {
-  const credential = await credentials.get();
-  if (!credential) throw new RepositoryError("authentication", "Connect a GitHub personal access token before reviewing drafts.", { status: 401 });
-  const response = await fetch("https://api.github.com/user", {
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${credential.token}`,
-      "X-GitHub-Api-Version": "2022-11-28"
-    },
-    credentials: "omit"
-  });
-  if (!response.ok) throw new RepositoryError("authentication", "GitHub could not verify the connected account.", { status: response.status });
-  const value: unknown = await response.json();
-  if (!value || typeof value !== "object" || typeof (value as { login?: unknown }).login !== "string") {
-    throw new RepositoryError("invalid-response", "GitHub returned an invalid account response.");
-  }
-  return (value as { login: string }).login;
+  return { account, editorial, site };
 }

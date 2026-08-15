@@ -2,6 +2,7 @@
 import { getCollection, render } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { toSlug, trustTier } from "../../lib/taxonomy";
+import { baseUrl, withBase } from "../../lib/base-url";
 
 export async function getStaticPaths() {
   const editions = await getCollection("daily", ({ data }) => data.status === "stable");
@@ -16,20 +17,20 @@ const stories = edition.data.news.map((id) => storyMap.get(id)).filter(Boolean);
 
 <BaseLayout title={`${edition.data.title} · AI Daily Brief`} description={edition.data.description}>
   <article class="edition">
-    <a class="back-link" href={import.meta.env.BASE_URL}>← All editions</a>
+    <a class="back-link" href={baseUrl}>← All editions</a>
     <header class="edition-header">
       <p class="eyebrow">{date} · {edition.data.readingMinutes} MIN READ</p>
       <h1>{edition.data.title}</h1>
       <p class="dek">{edition.data.description}</p>
       <div class="topic-row">
-        {edition.data.categories.map((category) => <a href={`${import.meta.env.BASE_URL}topics/category/${toSlug(category)}/`}>{category}</a>)}
-        {edition.data.tags.map((tag) => <a href={`${import.meta.env.BASE_URL}topics/tag/${toSlug(tag)}/`}>#{tag}</a>)}
+        {edition.data.categories.map((category) => <a href={withBase(`topics/category/${toSlug(category)}/`)}>{category}</a>)}
+        {edition.data.tags.map((tag) => <a href={withBase(`topics/tag/${toSlug(tag)}/`)}>#{tag}</a>)}
       </div>
       <p class="knowledge-meta">{edition.data.type} · {trustTier(edition.data.verified)} · generated {edition.data.generated?.at.toLocaleDateString("en-AU") ?? "without generation metadata"}</p>
     </header>
     {stories.length > 0 && <section class="story-index" aria-labelledby="stories-title">
       <p class="eyebrow" id="stories-title">THE CONNECTED STORIES</p>
-      {stories.map((story, index) => story && <a href={`${import.meta.env.BASE_URL}news/${story.id}/`}><b>{String(index + 1).padStart(2, "0")}</b><span><strong>{story.data.title}</strong><small>{story.data.summary}</small></span><i>→</i></a>)}
+      {stories.map((story, index) => story && <a href={withBase(`news/${story.id}/`)}><b>{String(index + 1).padStart(2, "0")}</b><span><strong>{story.data.title}</strong><small>{story.data.summary}</small></span><i>→</i></a>)}
     </section>}
     <div class="article-body"><Content /></div>
   </article>

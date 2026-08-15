@@ -1,90 +1,166 @@
 ---
+import { STANDARD_SECURITY_DISCLOSURE } from "@repo-apps/ui";
 ---
 
 <section class="review-page" aria-labelledby="review-title">
   <div class="review-kicker"><p class="eyebrow">EDITORIAL CONTROL ROOM</p><span class="security-badge">Signed out · secure by default</span></div>
-  <h1 id="review-title">Review the daily brief.</h1>
-  <p class="review-lede">A private workspace for checking the next edition before it is published. Your session and draft stay out of the public build.</p>
+  <h1 id="review-title">Review one complete edition.</h1>
+  <p class="review-lede">Read and refine the full daily article with its citations. The ten linked news concepts stay behind the scenes and publish automatically with your approval.</p>
 
   <section class="signed-out" aria-labelledby="signed-out-title">
-    <h2 id="signed-out-title">Sign in to access review content</h2>
-    <p>Authentication is required before drafts, source links, or publishing controls can be loaded. Nothing from a review session is included in this signed-out page.</p>
-    <button class="review-action" type="button" data-sign-in>Sign in to review</button>
+    <h2 id="signed-out-title">Connect to the private draft</h2>
+    <p data-connection-copy>The review client is checking this browser for your Page Apps credential.</p>
+    <aside class="credential-disclosure" data-shared-disclosure hidden role="note">
+      <strong>Use the shared Page Apps PAT?</strong>
+      <p>{STANDARD_SECURITY_DISCLOSURE}</p>
+      <p>AI Daily Brief independently verifies read/write access to both its public and private editorial repositories. Clicking <strong>Use shared PAT</strong> connects only this app; later visits may reconnect automatically.</p>
+    </aside>
+    <div class="connection-actions">
+      <button class="review-action" type="button" data-sign-in disabled>Checking connection…</button>
+      <button class="quiet-action" type="button" data-manual-sign-in hidden>Use a different PAT for this tab</button>
+      <a class="quiet-link" href="https://page-apps.github.io/">Manage PAT in Page Apps hub</a>
+    </div>
     <p class="field-hint" data-auth-message role="status" aria-live="polite"></p>
   </section>
 
   <section class="workspace" data-review-workspace hidden aria-labelledby="workspace-title">
-    <div class="workspace-bar"><div><h2 id="workspace-title">Edition review</h2><p class="workspace-meta" data-edition-meta></p></div><span class="status-pill" data-edition-status>Draft</span></div>
-    <div class="workspace-grid">
-      <nav class="brief-nav" aria-label="Daily brief and stories"><h3>In this edition</h3><div data-story-nav></div></nav>
-      <div class="editor">
-        <div class="editor-header"><div><h3 data-story-heading>Story review</h3><p data-story-meta></p></div><span class="status-pill" data-story-status>Needs review</span></div>
-        <form data-review-form>
-          <div class="editor-fields">
-            <div class="field"><label for="review-title-field">Title</label><input id="review-title-field" name="title" type="text" required /></div>
-            <div class="field"><label for="review-summary-field">Summary</label><textarea id="review-summary-field" name="summary" required></textarea><p class="field-hint">Keep the reader’s first takeaway clear and specific.</p></div>
-          </div>
-          <div class="editor-section"><h3>Classification</h3><div class="editor-fields"><div class="field"><label for="review-categories-field">Categories</label><input id="review-categories-field" name="categories" type="text" aria-describedby="classification-hint" /><p id="classification-hint" class="field-hint">Separate categories with commas.</p></div><div class="field"><label for="review-tags-field">Tags</label><input id="review-tags-field" name="tags" type="text" /></div></div></div>
-          <div class="editor-section"><h3>Source links</h3><div data-sources></div><div class="field source-editor"><label for="review-sources-field">Edit sources</label><textarea id="review-sources-field" name="sources" aria-describedby="sources-hint" placeholder="Source title | https://example.com"></textarea><p id="sources-hint" class="field-hint">One source per line. Use <code>Title | URL</code>, or a URL on its own.</p></div></div>
-          <div class="review-state" data-review-state hidden><strong data-state-label>Review state</strong><p data-state-message></p><div class="diff" data-diff hidden></div></div>
-          <div class="editor-footer"><span class="save-note" data-save-note>Changes are local until saved.</span><button class="publish-button" type="button" data-publish>Approve &amp; publish</button></div>
-        </form>
-      </div>
+    <div class="workspace-bar">
+      <div><h2 id="workspace-title">Daily article</h2><p class="workspace-meta" data-edition-meta></p></div>
+      <span class="status-pill" data-edition-status>Draft</span>
     </div>
+    <p class="workspace-message" data-review-message role="status" aria-live="polite"></p>
+
+    <form class="editor" data-review-form>
+      <div class="editor-fields">
+        <div class="field"><label for="review-title-field">Title</label><input id="review-title-field" name="title" type="text" required /></div>
+        <div class="field"><label for="review-summary-field">Reader introduction</label><textarea id="review-summary-field" name="summary" required></textarea><p class="field-hint">This appears under the headline in the public edition.</p></div>
+      </div>
+
+      <section class="article-review" aria-labelledby="article-preview-title">
+        <div class="section-heading"><div><p class="eyebrow">FULL ARTICLE</p><h3 id="article-preview-title">Reading preview</h3></div><span data-supporting-count></span></div>
+        <article class="article-preview" data-article-preview></article>
+        <details class="edit-drawer">
+          <summary>Edit full article Markdown</summary>
+          <div class="field"><label class="sr-only" for="review-body-field">Full article Markdown</label><textarea id="review-body-field" name="body" class="article-editor" required></textarea><p class="field-hint">The preview updates as you type. Mermaid and LaTex remain visible as source in this review screen and render on the published page.</p></div>
+        </details>
+      </section>
+
+      <section class="editor-section" aria-labelledby="sources-title">
+        <div class="section-heading"><div><p class="eyebrow">CITATIONS</p><h3 id="sources-title">Sources used by this edition</h3></div><span data-source-count></span></div>
+        <div class="source-list-review" data-sources></div>
+        <details class="edit-drawer">
+          <summary>Edit source links</summary>
+          <div class="field source-editor"><label for="review-sources-field">One source per line</label><textarea id="review-sources-field" name="sources" aria-describedby="sources-hint" placeholder="Source title | https://example.com"></textarea><p id="sources-hint" class="field-hint">Use <code>Title | URL</code>, or a URL on its own.</p></div>
+        </details>
+      </section>
+
+      <details class="edit-drawer classification-drawer">
+        <summary>Categories and connected-news tags</summary>
+        <div class="editor-fields"><div class="field"><label for="review-categories-field">Categories</label><input id="review-categories-field" name="categories" type="text" /><p class="field-hint">Separate categories with commas.</p></div><div class="field"><label for="review-tags-field">Tags</label><input id="review-tags-field" name="tags" type="text" /></div></div>
+      </details>
+
+      <div class="editor-footer">
+        <span class="save-note">Edits are saved to the private draft when you approve.</span>
+        <button class="publish-button" type="button" data-publish>Approve article &amp; publish</button>
+      </div>
+    </form>
   </section>
 </section>
 
 <dialog class="publish-dialog" data-publish-dialog aria-labelledby="publish-dialog-title">
-  <h2 id="publish-dialog-title">Approve and publish?</h2><p data-dialog-message>Publishing marks the reviewed edition as stable and makes it available to readers.</p>
+  <h2 id="publish-dialog-title">Approve this daily article?</h2>
+  <p>Your edited article and its source list will become public. The ten supporting news concepts will be published automatically for tags and connected-news navigation.</p>
   <div class="dialog-actions"><button type="button" data-cancel-publish>Keep reviewing</button><button class="confirm" type="button" data-confirm-publish>Approve &amp; publish</button></div>
 </dialog>
 
 <script>
-  // @ts-nocheck — this adapter intentionally accepts a client-owned draft model.
+  // @ts-nocheck — this adapter accepts the private review model at runtime.
   const root = document.querySelector(".review-page");
   const workspace = root?.querySelector("[data-review-workspace]");
-  const modelFromWindow = () => window.__AI_DAILY_REVIEW_MODEL__;
+  const form = workspace?.querySelector("[data-review-form]");
+  const dialog = document.querySelector("[data-publish-dialog]");
   const text = (value) => value == null ? "" : String(value);
-  const list = (value) => Array.isArray(value) ? value : (text(value).split(",").map((item) => item.trim()).filter(Boolean));
-  const render = (model) => {
-    if (!model || !workspace) return;
-    workspace.hidden = false;
-    const edition = model.edition || model;
-    const stories = edition.stories || model.stories || [];
-    const items = [{ ...edition, reviewKind: "daily" }, ...stories.map((story) => ({ ...story, reviewKind: "story" }))];
-    const meta = workspace.querySelector("[data-edition-meta]");
-    if (meta) meta.textContent = [edition.date, edition.title].filter(Boolean).join(" · ");
-    const editionStatus = workspace.querySelector("[data-edition-status]");
-    if (editionStatus) editionStatus.textContent = text(edition.status || "Draft");
-    const nav = workspace.querySelector("[data-story-nav]");
-    if (!nav) return;
-    nav.innerHTML = "";
-    items.forEach((story, index) => {
-      const button = document.createElement("button"); button.type = "button"; button.dataset.storyIndex = String(index); button.setAttribute("aria-current", index === 0 ? "true" : "false");
-      const heading = document.createElement("strong"); heading.textContent = text(story.title || (index === 0 ? "Daily brief" : `Story ${index}`));
-      const status = document.createElement("small"); status.textContent = text(story.status || "Needs review");
-      button.append(heading, status); nav.append(button);
-    });
-    let current = Number.isInteger(model.selectedIndex) ? Math.min(Math.max(model.selectedIndex, 0), items.length - 1) : 0;
-    const showStory = (index) => {
-      current = index; const story = items[index] || edition; const form = workspace.querySelector("[data-review-form]");
-      workspace.querySelector("[data-story-heading]").textContent = text(story.reviewKind === "daily" ? "Daily brief" : story.title || "Story review"); workspace.querySelector("[data-story-meta]").textContent = text(story.date || edition.date || ""); workspace.querySelector("[data-story-status]").textContent = text(story.status || "Needs review");
-      form.elements.title.value = text(story.title); form.elements.summary.value = text(story.summary || story.description); form.elements.categories.value = list(story.categories).join(", "); form.elements.tags.value = list(story.tags).join(", ");
-      const sources = workspace.querySelector("[data-sources]"); sources.replaceChildren(); (story.sources || []).forEach((source) => { const row = document.createElement("div"); row.className = "source-row"; const link = document.createElement("a"); link.href = text(source.resource || source.url); link.target = "_blank"; link.rel = "noopener noreferrer"; link.textContent = text(source.title || source.resource || source.url); const author = document.createElement("small"); author.textContent = text(source.author || "Source link"); row.append(link, author); sources.append(row); }); form.elements.sources.value = (story.sources || []).map((source) => source.title ? `${source.title} | ${source.resource || source.url}` : text(source.resource || source.url)).join("\n");
-      nav.querySelectorAll("button").forEach((item) => item.setAttribute("aria-current", item.dataset.storyIndex === String(index) ? "true" : "false"));
-      const state = story.conflict || story.diff ? "conflict" : story.status === "stable" ? "published" : "review"; const stateBox = workspace.querySelector("[data-review-state]"); const label = workspace.querySelector("[data-state-label]"); const message = workspace.querySelector("[data-state-message]"); const diff = workspace.querySelector("[data-diff]"); stateBox.hidden = false; label.textContent = state === "conflict" ? "Conflict detected" : state === "published" ? "Published" : "Review state"; message.textContent = state === "conflict" ? "The source changed while you were reviewing. Resolve the differences before publishing." : state === "published" ? "This story has been approved and is ready for the live edition." : "Check the wording and sources before approving this story."; if (story.diff) { diff.hidden = false; diff.textContent = text(story.diff); } else diff.hidden = true;
-    };
-    nav.addEventListener("click", (event) => { const button = event.target.closest("button[data-story-index]"); if (button) { showStory(Number(button.dataset.storyIndex)); window.dispatchEvent(new CustomEvent("ai-daily-review:select", { detail: { index: current } })); } });
-    workspace.querySelector("[data-review-form]")?.addEventListener("input", (event) => {
-      const form = event.currentTarget;
-      const sourceLines = text(form.elements.sources.value).split("\n").map((line) => line.trim()).filter(Boolean).map((line) => { const split = line.lastIndexOf("|"); return split >= 0 ? { title: line.slice(0, split).trim(), resource: line.slice(split + 1).trim() } : { resource: line }; }).filter((source) => /^https?:\/\//.test(source.resource));
-      window.dispatchEvent(new CustomEvent("ai-daily-review:edit", { detail: { index: current, title: form.elements.title.value, summary: form.elements.summary.value, categories: list(form.elements.categories.value), tags: list(form.elements.tags.value), sources: sourceLines } }));
-    });
-    showStory(current);
-    workspace.querySelector("[data-publish]").addEventListener("click", () => document.querySelector("[data-publish-dialog]")?.showModal());
+  const list = (value) => Array.isArray(value) ? value : text(value).split(",").map((item) => item.trim()).filter(Boolean);
+
+  const appendInline = (parent, value) => {
+    const pattern = /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)|\*\*([^*]+)\*\*|`([^`]+)`|\*([^*]+)\*/g;
+    let cursor = 0;
+    for (const match of value.matchAll(pattern)) {
+      parent.append(document.createTextNode(value.slice(cursor, match.index)));
+      let node;
+      if (match[1] && match[2]) { node = document.createElement("a"); node.textContent = match[1]; node.href = match[2]; node.target = "_blank"; node.rel = "noopener noreferrer"; }
+      else if (match[3]) { node = document.createElement("strong"); node.textContent = match[3]; }
+      else if (match[4]) { node = document.createElement("code"); node.textContent = match[4]; }
+      else { node = document.createElement("em"); node.textContent = match[5]; }
+      parent.append(node); cursor = match.index + match[0].length;
+    }
+    parent.append(document.createTextNode(value.slice(cursor)));
   };
-  root?.querySelector("[data-sign-in]")?.addEventListener("click", () => { const message = root.querySelector("[data-auth-message]"); if (message) message.textContent = "Sign-in is provided by the authenticated review client."; window.dispatchEvent(new CustomEvent("ai-daily-review:sign-in")); });
-  root?.querySelector("[data-cancel-publish]")?.addEventListener("click", () => document.querySelector("[data-publish-dialog]")?.close());
-  root?.querySelector("[data-confirm-publish]")?.addEventListener("click", () => { document.querySelector("[data-publish-dialog]")?.close(); const note = root.querySelector("[data-save-note]"); if (note) note.textContent = "Approval sent to the review service."; window.dispatchEvent(new CustomEvent("ai-daily-review:publish")); });
-  window.addEventListener("ai-daily-review:model", (event) => render(event.detail)); render(modelFromWindow());
+
+  const renderMarkdown = (container, markdown) => {
+    container.replaceChildren();
+    const lines = text(markdown).split(/\r?\n/); let paragraph = []; let activeList; let fence;
+    const flushParagraph = () => { if (!paragraph.length) return; const node = document.createElement("p"); appendInline(node, paragraph.join(" ")); container.append(node); paragraph = []; };
+    const closeList = () => { activeList = undefined; };
+    for (const line of lines) {
+      if (fence) { if (/^```/.test(line)) { const pre = document.createElement("pre"); const code = document.createElement("code"); code.textContent = fence.lines.join("\n"); if (fence.language) code.dataset.language = fence.language; pre.append(code); container.append(pre); fence = undefined; } else fence.lines.push(line); continue; }
+      const fenceStart = /^```([^\s]*)/.exec(line); if (fenceStart) { flushParagraph(); closeList(); fence = { language: fenceStart[1], lines: [] }; continue; }
+      if (!line.trim()) { flushParagraph(); closeList(); continue; }
+      const heading = /^(#{1,4})\s+(.+)$/.exec(line); if (heading) { flushParagraph(); closeList(); const level = Math.min(4, Math.max(2, heading[1].length + 1)); const node = document.createElement(`h${level}`); appendInline(node, heading[2]); container.append(node); continue; }
+      const quote = /^>\s?(.*)$/.exec(line); if (quote) { flushParagraph(); closeList(); const node = document.createElement("blockquote"); appendInline(node, quote[1]); container.append(node); continue; }
+      const unordered = /^[-*]\s+(.+)$/.exec(line); const ordered = /^\d+\.\s+(.+)$/.exec(line); const item = unordered ?? ordered;
+      if (item) { flushParagraph(); const tag = unordered ? "ul" : "ol"; if (!activeList || activeList.tagName.toLowerCase() !== tag) { activeList = document.createElement(tag); container.append(activeList); } const node = document.createElement("li"); appendInline(node, item[1]); activeList.append(node); continue; }
+      closeList(); paragraph.push(line.trim());
+    }
+    flushParagraph();
+    if (fence) { const pre = document.createElement("pre"); const code = document.createElement("code"); code.textContent = fence.lines.join("\n"); pre.append(code); container.append(pre); }
+  };
+
+  const sourceValues = () => text(form?.elements.sources.value).split("\n").map((line) => line.trim()).filter(Boolean).map((line) => { const split = line.lastIndexOf("|"); return split >= 0 ? { title: line.slice(0, split).trim(), resource: line.slice(split + 1).trim() } : { resource: line }; }).filter((source) => /^https?:\/\//.test(source.resource));
+  const sourceHost = (value) => { try { return new URL(value).hostname; } catch { return "Source link"; } };
+  const emitEdit = () => {
+    if (!form) return;
+    renderMarkdown(workspace.querySelector("[data-article-preview]"), form.elements.body.value);
+    window.dispatchEvent(new CustomEvent("ai-daily-review:edit", { detail: { title: form.elements.title.value, summary: form.elements.summary.value, body: form.elements.body.value, categories: list(form.elements.categories.value), tags: list(form.elements.tags.value), sources: sourceValues() } }));
+  };
+
+  const render = (model) => {
+    if (!model?.edition || !workspace || !form) return;
+    const edition = model.edition;
+    workspace.hidden = false;
+    const meta = workspace.querySelector("[data-edition-meta]"); if (meta) meta.textContent = [edition.date, edition.title].filter(Boolean).join(" · ");
+    const status = workspace.querySelector("[data-edition-status]"); if (status) status.textContent = text(edition.status || "Draft");
+    form.elements.title.value = text(edition.title); form.elements.summary.value = text(edition.summary || edition.description); form.elements.body.value = text(edition.body); form.elements.categories.value = list(edition.categories).join(", "); form.elements.tags.value = list(edition.tags).join(", ");
+    const sources = Array.from(new Map((edition.sources || []).filter((source) => source.resource).map((source) => [source.resource, source])).values());
+    form.elements.sources.value = sources.map((source) => source.title ? `${source.title} | ${source.resource}` : text(source.resource)).join("\n");
+    const sourceContainer = workspace.querySelector("[data-sources]"); sourceContainer.replaceChildren(); sources.forEach((source, index) => { const row = document.createElement("div"); row.className = "source-row"; const number = document.createElement("b"); number.textContent = String(index + 1).padStart(2, "0"); const link = document.createElement("a"); link.href = source.resource; link.target = "_blank"; link.rel = "noopener noreferrer"; link.textContent = text(source.title || source.resource); const author = document.createElement("small"); author.textContent = text(source.author || sourceHost(source.resource)); row.append(number, link, author); sourceContainer.append(row); });
+    const sourceCount = workspace.querySelector("[data-source-count]"); if (sourceCount) sourceCount.textContent = `${sources.length} source${sources.length === 1 ? "" : "s"}`;
+    const supporting = workspace.querySelector("[data-supporting-count]"); if (supporting) supporting.textContent = `${edition.supportingConcepts || 0} supporting concepts · no separate review`;
+    renderMarkdown(workspace.querySelector("[data-article-preview]"), edition.body);
+  };
+
+  form?.addEventListener("input", emitEdit);
+  root?.querySelector("[data-sign-in]")?.addEventListener("click", () => window.dispatchEvent(new CustomEvent("ai-daily-review:sign-in")));
+  root?.querySelector("[data-manual-sign-in]")?.addEventListener("click", () => window.dispatchEvent(new CustomEvent("ai-daily-review:manual-sign-in")));
+  root?.querySelector("[data-publish]")?.addEventListener("click", () => {
+    if (form && !form.reportValidity()) return;
+    if (typeof dialog?.showModal === "function") dialog.showModal();
+    else if (window.confirm("Approve this daily article and publish it now?")) window.dispatchEvent(new CustomEvent("ai-daily-review:publish"));
+  });
+  document.querySelector("[data-cancel-publish]")?.addEventListener("click", () => dialog?.close());
+  document.querySelector("[data-confirm-publish]")?.addEventListener("click", () => { dialog?.close(); window.dispatchEvent(new CustomEvent("ai-daily-review:publish")); });
+
+  window.addEventListener("ai-daily-review:model", (event) => render(event.detail));
+  window.addEventListener("ai-daily-review:connection", (event) => {
+    const mode = event.detail?.mode; const primary = root?.querySelector("[data-sign-in]"); const manual = root?.querySelector("[data-manual-sign-in]"); const disclosure = root?.querySelector("[data-shared-disclosure]"); const copy = root?.querySelector("[data-connection-copy]");
+    if (!primary) return;
+    primary.disabled = mode === "checking"; primary.textContent = mode === "checking" ? "Checking connection…" : mode === "shared" ? "Use shared PAT" : "Connect for this tab";
+    if (manual) manual.hidden = mode !== "shared"; if (disclosure) disclosure.hidden = mode !== "shared"; if (copy) copy.textContent = mode === "shared" ? "A PAT from the Page Apps hub is ready on this browser." : mode === "manual" ? "No Page Apps PAT is available on this browser yet." : "Checking this browser for your Page Apps credential.";
+  });
+  window.addEventListener("ai-daily-review:status", (event) => {
+    const detail = event.detail || {}; const publish = root?.querySelector("[data-publish]"); const confirm = document.querySelector("[data-confirm-publish]"); const primary = root?.querySelector("[data-sign-in]");
+    if (publish) { publish.disabled = Boolean(detail.busy || detail.published); publish.textContent = detail.published ? "Published" : detail.busy ? "Working…" : "Approve article & publish"; }
+    if (confirm) confirm.disabled = Boolean(detail.busy); if (primary) primary.disabled = Boolean(detail.busy);
+    root?.querySelectorAll("[data-review-message], [data-auth-message]").forEach((target) => { target.textContent = text(detail.message); target.dataset.tone = detail.error ? "error" : detail.published ? "success" : "neutral"; });
+  });
 </script>

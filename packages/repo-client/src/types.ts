@@ -35,6 +35,10 @@ export interface RepositoryAccess {
   readonly defaultBranch: string;
 }
 
+export interface RepositoryAccount {
+  readonly login: string;
+}
+
 export interface RepositoryFile {
   readonly path: string;
   readonly sha: string;
@@ -139,6 +143,7 @@ export interface BatchCommitResult {
 
 export interface RepositoryClient {
   readonly repository: RepositoryTarget;
+  verifyAccount(): Promise<RepositoryAccount>;
   verifyAccess(): Promise<RepositoryAccess>;
   readFile(path: string): Promise<RepositoryFile>;
   list(path?: string): Promise<readonly RepositoryEntry[]>;

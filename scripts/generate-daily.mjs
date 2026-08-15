@@ -86,7 +86,7 @@ Three specific, falsifiable things to watch.
 ## Editorial note
 State the main uncertainty or potential blind spot in this edition.
 
-Aim for 800–1,300 words. The website separately presents the ten linked news concepts, so do not repeat a long ten-item list.
+Aim for 800–1,300 words. Cite factual claims in context with ordinary Markdown links using only the supplied source URLs. The article must remain understandable without opening the ten supporting news concepts. The website separately presents those concepts for navigation, so do not repeat a long ten-item list.
 
 Editorial preferences:\n${preferences}
 
@@ -98,7 +98,7 @@ const words = body.replace(/[`*_#>[\]()]|https?:\/\/\S+/g, " ").trim().split(/\s
 const readingMinutes = Math.max(4, Math.ceil(words / 220));
 const allTags = [...new Set(stories.flatMap((story) => story.tags))].slice(0, 12);
 const allCategories = [...new Set(stories.flatMap((story) => story.categories))];
-const allSources = stories.flatMap((story) => story.sources).slice(0, 30);
+const allSources = [...new Map(stories.flatMap((story) => story.sources).map((source) => [source.resource, source])).values()].slice(0, 30);
 const title = `AI Daily Brief — ${new Date(`${date}T12:00:00Z`).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}`;
 const dailyDocument = `---\ntype: Daily Brief\ntitle: ${yaml(title)}\ndescription: ${yaml("Ten consequential AI developments and the deeper pattern behind them.")}\ndate: ${date}\nreadingMinutes: ${readingMinutes}\ncategories: ${JSON.stringify(allCategories)}\ntags: ${JSON.stringify(allTags)}\nsources:\n${sourceFrontmatter(allSources)}\ngenerated: { by: ${yaml(`${writerAgent}/${writerModel}`)}, at: ${yaml(generatedAt)} }\nstatus: draft\nstale_after: ${date}\nnews: ${JSON.stringify(storyIds)}\n---\n\n${body}\n`;
 

@@ -17,6 +17,9 @@ importers:
       '@repo-apps/repo-client':
         specifier: workspace:*
         version: link:packages/repo-client
+      '@repo-apps/ui':
+        specifier: workspace:*
+        version: link:packages/ui
       '@vite-pwa/astro':
         specifier: ^1.1.0
         version: 1.2.0(astro@5.18.2(rollup@4.62.4)(terser@5.50.0)(typescript@5.9.3)(yaml@2.9.0))(vite-plugin-pwa@1.3.0(vite@6.4.3(terser@5.50.0)(yaml@2.9.0))(workbox-build@7.4.1)(workbox-window@7.4.1))
@@ -46,6 +49,8 @@ importers:
   packages/credentials: {}
 
   packages/repo-client: {}
+
+  packages/ui: {}
 
 packages:
 

@@ -22,17 +22,21 @@ bundle="drafts/$date"
 cd "$repo"
 node "$script_dir/validate-editorial-draft.mjs" --bundle="$repo/$bundle"
 
-if git ls-files --error-unmatch -- "$bundle" >/dev/null 2>&1 && git diff --quiet -- "$bundle"; then
-  echo "Draft bundle $date is already committed; nothing to publish."
-  exit 0
+if git ls-files --error-unmatch -- "$bundle" >/dev/null 2>&1 \
+  && git diff --cached --quiet -- "$bundle" \
+  && git diff --quiet -- "$bundle"; then
+  echo "Draft bundle $date is already committed locally; continuing with synchronization."
+else
+  # Stage only this validated bundle. The explicit path check prevents a bad
+  # invocation from turning an unrelated working-tree change into a publication.
+  git add -- "$bundle"
+  mapfile -t staged < <(git diff --cached --name-only -- "$bundle")
+  [[ "${#staged[@]}" -eq 12 ]] || { echo "Expected exactly 12 staged bundle files; refusing to commit." >&2; exit 1; }
+  for path in "${staged[@]}"; do [[ "$path" == "$bundle"/* ]] || { echo "Unexpected staged path: $path" >&2; exit 1; }; done
+  git commit --only -m "Add AI Daily editorial draft: $date" -- "$bundle"
 fi
 
-# Stage only this validated bundle. The explicit path check prevents a bad
-# invocation from turning an unrelated working-tree change into a publication.
-git add -- "$bundle"
-mapfile -t staged < <(git diff --cached --name-only -- "$bundle")
-[[ "${#staged[@]}" -eq 12 ]] || { echo "Expected exactly 12 staged bundle files; refusing to commit." >&2; exit 1; }
-for path in "${staged[@]}"; do [[ "$path" == "$bundle"/* ]] || { echo "Unexpected staged path: $path" >&2; exit 1; }; done
-git commit --only -- "$bundle" -m "Add AI Daily editorial draft: $date"
+echo "Pulling the latest remote changes before push."
+git pull --rebase --autostash
 git push
 echo "Pushed only editorial draft bundle $bundle."

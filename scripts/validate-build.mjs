@@ -30,6 +30,15 @@ const indexHtml = await readFile(resolve(dist, "index.html"), "utf8");
 if (!/rel=["']manifest["']/.test(indexHtml)) throw new Error("The app shell does not link its web manifest.");
 if (!serviceWorkerRegistrationFound) throw new Error("The app shell does not register its service worker.");
 
+const serviceWorker = await readFile(resolve(dist, "sw.js"), "utf8");
+const offlineReadingRoutes = (await files(dist))
+  .filter((path) => /\/(?:daily|news)\/.+\/index\.html$/.test(path))
+  .map((path) => path.slice(dist.length + 1).replace(/\/index\.html$/, ""));
+for (const route of offlineReadingRoutes) {
+  if (!serviceWorker.includes(`url:"${route}"`)) throw new Error(`Published reading route is not precached for offline use: ${route}`);
+}
+if (!serviceWorker.includes('directoryIndex:"index.html"')) throw new Error("The service worker cannot resolve clean reading URLs offline.");
+
 const reviewHtml = await readFile(resolve(dist, "review/index.html"), "utf8");
 for (const required of ["Review independent editions", "PENDING DRAFTS", "FULL ARTICLE", "CITATIONS", "Discard private draft", "Approve article &amp; publish"]) {
   if (!reviewHtml.includes(required)) throw new Error(`Review artifact is missing required UI copy: ${required}`);

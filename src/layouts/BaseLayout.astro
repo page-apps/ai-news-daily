@@ -2,8 +2,8 @@
 import "../styles/global.css";
 import { baseUrl } from "../lib/base-url";
 
-interface Props { title?: string; description?: string }
-const { title = "AI Daily Brief", description = "A thoughtful daily AI news briefing." } = Astro.props;
+interface Props { title?: string; description?: string; readingMode?: boolean }
+const { title = "AI Daily Brief", description = "A thoughtful daily AI news briefing.", readingMode = false } = Astro.props;
 ---
 
 <!doctype html>
@@ -17,14 +17,17 @@ const { title = "AI Daily Brief", description = "A thoughtful daily AI news brie
     <link rel="icon" href={`${baseUrl}icons/icon.svg`} type="image/svg+xml" />
     <title>{title}</title>
   </head>
-  <body>
+  <body data-reader-page={readingMode ? "true" : undefined}>
+    {readingMode && <div class="reading-progress" data-reading-progress role="progressbar" aria-label="Reading progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span></div>}
     <header class="site-header">
       <a class="wordmark" href={baseUrl}>AI Daily <span>Brief</span></a>
       <div class="header-actions">
         <a class="browse-link" href={`${baseUrl}topics/`}>Explore</a>
         <a class="review-link" data-review-link href={`${baseUrl}review/`} hidden>Review</a>
+        <button class="offline-sync" data-offline-sync type="button">Sync offline</button>
         <button class="theme-toggle" type="button" aria-label="Toggle colour theme" title="Toggle colour theme">◐</button>
       </div>
+      <p class="offline-status" data-offline-status role="status" aria-live="polite" hidden></p>
     </header>
     <main><slot /></main>
     <footer>One considered edition a day · Built for unhurried reading</footer>
@@ -51,6 +54,86 @@ const { title = "AI Daily Brief", description = "A thoughtful daily AI news brie
         window.addEventListener("load", () => {
           void navigator.serviceWorker.register(`${pwaBase}sw.js`, { scope: pwaBase });
         }, { once: true });
+      }
+    </script>
+    <script>
+      const syncButton = document.querySelector<HTMLButtonElement>("[data-offline-sync]");
+      const syncStatus = document.querySelector<HTMLElement>("[data-offline-status]");
+
+      const setSyncStatus = (message: string) => {
+        if (!syncStatus) return;
+        syncStatus.textContent = message;
+        syncStatus.hidden = false;
+      };
+
+      if (!("serviceWorker" in navigator)) {
+        syncButton?.setAttribute("hidden", "");
+      } else {
+        syncButton?.addEventListener("click", async () => {
+          if (!navigator.onLine) {
+            setSyncStatus("You are offline. Previously synced editions are still available.");
+            return;
+          }
+
+          syncButton.disabled = true;
+          setSyncStatus("Syncing the latest edition for offline reading…");
+          try {
+            const registration = await navigator.serviceWorker.ready;
+            await registration.update();
+            const worker = registration.installing ?? registration.waiting;
+            if (worker && !["installed", "activating", "activated"].includes(worker.state)) {
+              await new Promise<void>((resolve, reject) => worker.addEventListener("statechange", () => {
+                if (["installed", "activating", "activated"].includes(worker.state)) resolve();
+                if (worker.state === "redundant") reject(new Error("Service worker update was replaced."));
+              }, { once: false }));
+            }
+            // The generated worker precaches every published edition and story before
+            // installation, so a fully installed worker has a complete offline copy.
+            setSyncStatus("Latest news saved for offline reading.");
+          } catch {
+            setSyncStatus("Could not sync right now. Please try again while connected.");
+          } finally {
+            syncButton.disabled = false;
+          }
+        });
+
+        window.addEventListener("online", () => setSyncStatus("Online — you can sync the latest edition."));
+        window.addEventListener("offline", () => setSyncStatus("Offline mode — reading your saved editions."));
+      }
+    </script>
+    <script>
+      if (document.body.dataset.readerPage === "true") {
+        const progress = document.querySelector<HTMLElement>("[data-reading-progress]");
+        const renderProgress = () => {
+          const root = document.documentElement;
+          const distance = Math.max(0, root.scrollHeight - root.clientHeight);
+          const value = distance === 0 ? 100 : Math.min(100, Math.round((root.scrollTop / distance) * 100));
+          progress?.style.setProperty("--reading-progress", String(value / 100));
+          progress?.setAttribute("aria-valuenow", String(value));
+        };
+
+        let frame = 0;
+        const queueProgressRender = () => {
+          if (frame) return;
+          frame = requestAnimationFrame(() => {
+            frame = 0;
+            renderProgress();
+          });
+        };
+        window.addEventListener("scroll", queueProgressRender, { passive: true });
+        window.addEventListener("resize", queueProgressRender, { passive: true });
+        renderProgress();
+
+        const isInteractive = (target: EventTarget | null) => target instanceof Element
+          && Boolean(target.closest("a, button, input, select, textarea, [contenteditable='true'], [role='textbox']"));
+        window.addEventListener("keydown", (event) => {
+          if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.isComposing || isInteractive(event.target)) return;
+          const direction = ["PageDown", "ArrowRight", " ", "AudioVolumeDown", "VolumeDown"].includes(event.key) ? 1
+            : ["PageUp", "ArrowLeft", "AudioVolumeUp", "VolumeUp"].includes(event.key) ? -1 : 0;
+          if (!direction) return;
+          event.preventDefault();
+          window.scrollBy({ top: Math.round(window.innerHeight * 0.88) * direction });
+        });
       }
     </script>
     <script>

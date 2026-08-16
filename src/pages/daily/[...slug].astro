@@ -15,7 +15,7 @@ const storyMap = new Map((await getCollection("news", ({ data }) => data.status 
 const stories = edition.data.news.map((id) => storyMap.get(id)).filter(Boolean);
 ---
 
-<BaseLayout title={`${edition.data.title} · AI Daily Brief`} description={edition.data.description}>
+<BaseLayout title={`${edition.data.title} · AI Daily Brief`} description={edition.data.description} readingMode>
   <article class="edition">
     <a class="back-link" href={baseUrl}>← All editions</a>
     <header class="edition-header">
@@ -27,6 +27,7 @@ const stories = edition.data.news.map((id) => storyMap.get(id)).filter(Boolean);
         {edition.data.tags.map((tag) => <a href={withBase(`topics/tag/${toSlug(tag)}/`)}>#{tag}</a>)}
       </div>
       <p class="knowledge-meta">{edition.data.type} · {trustTier(edition.data.verified)} · generated {edition.data.generated?.at.toLocaleDateString("en-AU") ?? "without generation metadata"}</p>
+      <p class="reader-controls">Use your e-reader’s page or volume buttons, Page Up/Down, or ←/→ to move one screen at a time.</p>
     </header>
     {stories.length > 0 && <section class="story-index" aria-labelledby="stories-title">
       <p class="eyebrow" id="stories-title">THE CONNECTED STORIES</p>

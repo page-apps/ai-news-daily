@@ -6,7 +6,15 @@ import { withBase } from "../lib/base-url";
 
 const editions = (await getCollection("daily", ({ data }) => data.status === "stable"))
   .sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
-const latest = editions[0];
+const editionsByDate = new Map<string, typeof editions>();
+for (const edition of editions) {
+  const dateKey = edition.data.date.toISOString().slice(0, 10);
+  editionsByDate.set(dateKey, [...(editionsByDate.get(dateKey) ?? []), edition]);
+}
+const editionDays = [...editionsByDate.values()];
+const latestDay = editionDays[0] ?? [];
+const latestDate = latestDay[0]?.data.date;
+const earlierEditions = editionDays.slice(1).flat();
 const formatDate = (date: Date) => date.toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 ---
 
@@ -16,16 +24,18 @@ const formatDate = (date: Date) => date.toLocaleDateString("en-AU", { weekday: "
     <h1>AI news, distilled.<br /><em>Insight, not noise.</em></h1>
     <p class="hero-copy">Ten important developments, carefully researched and connected into one readable daily edition.</p>
   </section>
-  {latest ? (
+  {latestDate ? (
     <section class="latest">
-      <p class="eyebrow">LATEST EDITION · {formatDate(latest.data.date)}</p>
-      <a class="feature-card" href={withBase(`daily/${latest.id}/`)}>
-        <span class="feature-number">01</span>
-        <div><h2>{latest.data.title}</h2><p>{latest.data.description}</p><span class="read-link">Read the edition <b>→</b></span></div>
-        <span class="reading-time">{latest.data.readingMinutes} min</span>
-      </a>
-      <div class="topic-row">{latest.data.categories.map((category) => <a href={withBase(`topics/category/${toSlug(category)}/`)}>{category}</a>)}</div>
+      <p class="eyebrow">{latestDay.length === 1 ? "LATEST EDITION" : "LATEST EDITIONS"} · {formatDate(latestDate)}</p>
+      {latestDay.map((edition, index) => <article class="latest-edition">
+        <a class="feature-card" href={withBase(`daily/${edition.id}/`)}>
+          <span class="feature-number">{String(index + 1).padStart(2, "0")}</span>
+          <div><h2>{edition.data.title}</h2><p>{edition.data.description}</p><span class="read-link">Read the edition <b>→</b></span></div>
+          <span class="reading-time">{edition.data.readingMinutes} min</span>
+        </a>
+        {edition.data.categories.length > 0 && <div class="topic-row">{edition.data.categories.map((category) => <a href={withBase(`topics/category/${toSlug(category)}/`)}>{category}</a>)}</div>}
+      </article>)}
     </section>
   ) : <p class="empty-state">The first edition is being prepared.</p>}
-  {editions.length > 1 && <section class="archive"><p class="eyebrow">EARLIER EDITIONS</p>{editions.slice(1).map((edition) => <a href={withBase(`daily/${edition.id}/`)}><time>{formatDate(edition.data.date)}</time><span>{edition.data.title}</span><small>{edition.data.readingMinutes} min →</small></a>)}</section>}
+  {earlierEditions.length > 0 && <section class="archive"><p class="eyebrow">EARLIER EDITIONS</p>{earlierEditions.map((edition) => <a href={withBase(`daily/${edition.id}/`)}><time>{formatDate(edition.data.date)}</time><span>{edition.data.title}</span><small>{edition.data.readingMinutes} min →</small></a>)}</section>}
 </BaseLayout>

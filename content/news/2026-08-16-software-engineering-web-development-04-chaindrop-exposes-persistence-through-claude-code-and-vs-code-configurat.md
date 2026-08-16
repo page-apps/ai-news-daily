@@ -15,7 +15,7 @@ sources:
     resource: "https://www.microsoft.com/en-us/security/blog/2026/08/04/chaindrop-supply-chain-compromise-anatomy-self-propagating-worm/"
     title: "ChainDrop supply chain compromise: Anatomy of a self-propagating worm"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-08-16T00:40:46.516Z" }
-verified: { by: "human:cmwen", at: "2026-08-16T01:28:58.341Z" }
+verified: { by: "human:cmwen", at: "2026-08-16T21:05:51.880Z" }
 status: stable
 stale_after: 2026-08-16
 ---

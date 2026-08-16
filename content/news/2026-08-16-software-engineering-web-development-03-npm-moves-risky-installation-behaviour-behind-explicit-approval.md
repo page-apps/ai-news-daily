@@ -16,7 +16,7 @@ sources:
     resource: "https://github.blog/changelog/2026-07-08-npm-install-time-security-and-gat-bypass2fa-deprecation/"
     title: "npm install-time security and GAT bypass2fa deprecation"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-08-16T00:40:46.516Z" }
-verified: { by: "human:cmwen", at: "2026-08-16T01:28:58.341Z" }
+verified: { by: "human:cmwen", at: "2026-08-16T21:05:51.880Z" }
 status: stable
 stale_after: 2026-08-16
 ---

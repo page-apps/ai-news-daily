@@ -16,7 +16,7 @@ sources:
     title: "DeepSeek's innovative harness treats everything as a plug-in"
     author: "Thomas Claburn"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-08-16T00:40:46.515Z" }
-verified: { by: "human:cmwen", at: "2026-08-16T01:28:58.341Z" }
+verified: { by: "human:cmwen", at: "2026-08-16T21:05:51.880Z" }
 status: stable
 stale_after: 2026-08-16
 ---

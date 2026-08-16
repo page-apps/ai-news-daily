@@ -12,7 +12,7 @@ sources:
     resource: "https://huggingface.co/Qwen/Qwen3.8-27B-FP8"
     title: "Qwen3.8-27B-FP8 model card"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-08-16T00:40:46.514Z" }
-verified: { by: "human:cmwen", at: "2026-08-16T01:28:58.341Z" }
+verified: { by: "human:cmwen", at: "2026-08-16T21:05:51.880Z" }
 status: stable
 stale_after: 2026-08-16
 ---

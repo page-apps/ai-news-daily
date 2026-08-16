@@ -12,7 +12,7 @@ sources:
     resource: "https://github.com/lajosdeme/mole"
     title: "Mole"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-08-16T00:40:46.520Z" }
-verified: { by: "human:cmwen", at: "2026-08-16T01:28:58.341Z" }
+verified: { by: "human:cmwen", at: "2026-08-16T21:05:51.881Z" }
 status: stable
 stale_after: 2026-08-16
 ---

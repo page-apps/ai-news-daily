@@ -54,7 +54,7 @@ sources:
     resource: "https://github.com/schapman1974/briskdb"
     title: "BriskDB"
 generated: { by: "codex/gpt-5.6-sol", at: "2026-08-16T00:40:46.512Z" }
-verified: { by: "human:cmwen", at: "2026-08-16T01:28:58.340Z" }
+verified: { by: "human:cmwen", at: "2026-08-16T21:05:51.880Z" }
 status: stable
 stale_after: 2026-08-16
 news: ["2026-08-16-software-engineering-web-development-01-qwen3-8-27b-expands-locally-deployable-coding-models","2026-08-16-software-engineering-web-development-02-deepseek-releases-a-plugin-oriented-agent-harness","2026-08-16-software-engineering-web-development-03-npm-moves-risky-installation-behaviour-behind-explicit-approval","2026-08-16-software-engineering-web-development-04-chaindrop-exposes-persistence-through-claude-code-and-vs-code-configurat","2026-08-16-software-engineering-web-development-05-graphql-tooling-converges-on-llm-generated-mocks-without-a-standard","2026-08-16-software-engineering-web-development-06-yadda-3-0-modernises-javascript-bdd-for-agent-assisted-maintenance","2026-08-16-software-engineering-web-development-07-deltix-turns-plain-english-mobile-tasks-into-replayable-tests","2026-08-16-software-engineering-web-development-08-ace-sidecar-adds-local-cost-and-workflow-observability-for-coding-agents","2026-08-16-software-engineering-web-development-09-mole-applies-budgets-and-evidence-checks-to-deep-research","2026-08-16-software-engineering-web-development-10-briskdb-experiments-with-sharded-sqlite-as-a-developer-facing-database"]

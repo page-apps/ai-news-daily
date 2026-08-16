@@ -24,11 +24,31 @@ interface ReviewDocument {
   body: string;
   original: string;
 }
-interface DraftManifest { schema: string; date: string; status: string; daily: string; news: string[]; files: string[] }
-interface ReviewSession {
+interface PipelineMetadata { id: string; title: string; categories: string[] }
+interface DraftManifest {
+  schema: string;
+  date: string;
+  status: string;
+  daily: string;
+  news: string[];
+  files: string[];
+  pipeline?: PipelineMetadata;
+  publicId?: string;
+}
+interface DraftDescriptor {
+  id: string;
+  bundlePath: string;
+  manifest: DraftManifest;
+  manifestFile: RepositoryFile;
+  pipeline: PipelineMetadata;
+}
+interface ReviewConnection {
   credentials: CredentialProvider;
   editorial: RepositoryClient;
   site: RepositoryClient;
+}
+interface ReviewSession extends ReviewConnection {
+  descriptor: DraftDescriptor;
   manifest: DraftManifest;
   manifestFile: RepositoryFile;
   daily: ReviewDocument;
@@ -43,7 +63,9 @@ interface DailyEdit {
   sources: Source[];
 }
 
+let connection: ReviewConnection | undefined;
 let session: ReviewSession | undefined;
+let pendingDrafts: DraftDescriptor[] = [];
 let sharedCredentialAvailable = false;
 
 function parseScalar(head: string, key: string): string {
@@ -158,15 +180,76 @@ function uniqueSources(sources: Source[]): Source[] {
   });
 }
 
+function pipelineFor(manifest: DraftManifest): PipelineMetadata {
+  if (manifest.pipeline && /^[a-z0-9][a-z0-9-]*$/.test(manifest.pipeline.id) && manifest.pipeline.title) {
+    return { id: manifest.pipeline.id, title: manifest.pipeline.title, categories: manifest.pipeline.categories ?? [] };
+  }
+  return { id: "legacy-ai", title: "AI Daily Brief", categories: [] };
+}
+
+function validateManifest(value: unknown, bundlePath: string): DraftManifest {
+  if (!value || typeof value !== "object") throw new Error(`Draft bundle ${bundlePath} has an invalid manifest.`);
+  const manifest = value as DraftManifest;
+  if (!["ai-news-daily/editorial-draft/v1", "ai-news-daily/editorial-draft/v2"].includes(manifest.schema)
+    || !/^\d{4}-\d{2}-\d{2}$/.test(manifest.date)
+    || !Array.isArray(manifest.news)
+    || manifest.news.length !== 10
+    || manifest.daily !== "daily.md"
+    || !Array.isArray(manifest.files)
+    || manifest.files.length !== 11) throw new Error(`Draft bundle ${bundlePath} is invalid.`);
+  if (manifest.schema.endsWith("/v2")) {
+    const pipeline = pipelineFor(manifest);
+    if (pipeline.id === "legacy-ai" || manifest.publicId !== `${manifest.date}--${pipeline.id}`) throw new Error(`Draft bundle ${bundlePath} has an invalid pipeline definition.`);
+  }
+  return manifest;
+}
+
+async function draftDescriptor(editorial: RepositoryClient, bundlePath: string): Promise<DraftDescriptor> {
+  const manifestFile = await editorial.readFile(`${bundlePath}/manifest.json`);
+  const manifest = validateManifest(JSON.parse(manifestFile.content), bundlePath);
+  const pipeline = pipelineFor(manifest);
+  return { id: bundlePath, bundlePath, manifest, manifestFile, pipeline };
+}
+
+async function loadPendingDrafts(editorial: RepositoryClient): Promise<DraftDescriptor[]> {
+  const entries = await editorial.list("drafts");
+  const dates = entries.filter((entry) => entry.type === "dir" && /^\d{4}-\d{2}-\d{2}$/.test(entry.name)).map((entry) => entry.name).sort();
+  const candidates: DraftDescriptor[] = [];
+  for (const date of dates) {
+    const base = `drafts/${date}`;
+    const children = await editorial.list(base);
+    if (children.some((entry) => entry.type === "file" && entry.name === "manifest.json")) candidates.push(await draftDescriptor(editorial, base));
+    for (const child of children.filter((entry) => entry.type === "dir" && !entry.name.startsWith("."))) {
+      const childPath = `${base}/${child.name}`;
+      const childEntries = await editorial.list(childPath);
+      // A v1 draft has a sibling `news/` support directory. Only a directory
+      // containing its own manifest is an independent v2 pipeline bundle.
+      if (childEntries.some((entry) => entry.type === "file" && entry.name === "manifest.json")) {
+        candidates.push(await draftDescriptor(editorial, childPath));
+      }
+    }
+  }
+  return candidates
+    .filter((draft) => draft.manifest.status === "draft")
+    .sort((left, right) => right.manifest.date.localeCompare(left.manifest.date) || left.pipeline.title.localeCompare(right.pipeline.title));
+}
+
+async function loadDraft(editorial: RepositoryClient, descriptor: DraftDescriptor): Promise<{ manifest: DraftManifest; manifestFile: RepositoryFile; daily: ReviewDocument; stories: ReviewDocument[] }> {
+  const [daily, ...stories] = await Promise.all([descriptor.manifest.daily, ...descriptor.manifest.news].map((path) => editorial.readFile(`${descriptor.bundlePath}/${path}`)));
+  return { manifest: descriptor.manifest, manifestFile: descriptor.manifestFile, daily: readDocument(daily), stories: stories.map(readDocument) };
+}
+
 function model() {
-  if (!session) return undefined;
   return {
-    edition: {
+    drafts: pendingDrafts.map((draft) => ({ id: draft.id, date: draft.manifest.date, pipeline: draft.pipeline, status: draft.manifest.status })),
+    selectedDraftId: session?.descriptor.id,
+    edition: session ? {
       ...session.daily.metadata,
       body: session.daily.body,
       sources: uniqueSources(session.daily.metadata.sources),
       supportingConcepts: session.stories.length,
-    },
+      pipeline: session.descriptor.pipeline,
+    } : undefined,
   };
 }
 
@@ -174,7 +257,7 @@ function emitModel(): void {
   window.dispatchEvent(new CustomEvent("ai-daily-review:model", { detail: model() }));
 }
 
-function setStatus(message: string, options: { busy?: boolean; published?: boolean; error?: boolean } = {}): void {
+function setStatus(message: string, options: { busy?: boolean; success?: boolean; error?: boolean } = {}): void {
   for (const target of document.querySelectorAll<HTMLElement>("[data-review-message], [data-auth-message]")) target.textContent = message;
   window.dispatchEvent(new CustomEvent("ai-daily-review:status", { detail: { message, ...options } }));
 }
@@ -190,18 +273,18 @@ function emitConnection(mode: "manual" | "shared" | "checking"): void {
   window.dispatchEvent(new CustomEvent("ai-daily-review:connection", { detail: { mode } }));
 }
 
-async function loadLatestDraft(editorial: RepositoryClient): Promise<{ manifest: DraftManifest; manifestFile: RepositoryFile; daily: ReviewDocument; stories: ReviewDocument[] }> {
-  const entries = await editorial.list("drafts");
-  const dates = entries.filter((entry) => entry.type === "dir" && /^\d{4}-\d{2}-\d{2}$/.test(entry.name)).map((entry) => entry.name).sort();
-  for (const date of dates.reverse()) {
-    const manifestFile = await editorial.readFile(`drafts/${date}/manifest.json`);
-    const manifest = JSON.parse(manifestFile.content) as DraftManifest;
-    if (manifest.schema !== "ai-news-daily/editorial-draft/v1" || manifest.news.length !== 10) throw new Error(`Draft bundle ${date} is invalid.`);
-    if (manifest.status !== "draft") continue;
-    const [daily, ...stories] = await Promise.all([manifest.daily, ...manifest.news].map((path) => editorial.readFile(`drafts/${date}/${path}`)));
-    return { manifest, manifestFile, daily: readDocument(daily), stories: stories.map(readDocument) };
+async function refreshDrafts(preferredId?: string): Promise<void> {
+  if (!connection) return;
+  pendingDrafts = await loadPendingDrafts(connection.editorial);
+  const descriptor = pendingDrafts.find((draft) => draft.id === preferredId) ?? pendingDrafts[0];
+  if (!descriptor) {
+    session = undefined;
+    emitModel();
+    return;
   }
-  throw new Error("No unapproved editorial draft bundles are available yet.");
+  const loaded = await loadDraft(connection.editorial, descriptor);
+  session = { ...connection, descriptor, ...loaded };
+  emitModel();
 }
 
 function repositoryClients(credentials: CredentialProvider) {
@@ -217,23 +300,18 @@ async function finishConnection(credentials: CredentialProvider): Promise<void> 
   const clients = repositoryClients(credentials);
   const access = await verifyNewsRepositories(clients);
   const login = access.account.login;
-  if (login.toLowerCase() !== reviewConfig.reviewerLogin.toLowerCase()) {
-    throw new Error(`This review area is restricted to ${reviewConfig.reviewerLogin}. Connected as ${login}.`);
-  }
-  if (!access.editorial.canRead || !access.editorial.canWrite || !access.site.canWrite) {
-    throw new Error("The PAT needs Contents: read and write for page-apps/ai-news-daily and page-apps/ai-news-daily-editorial.");
-  }
-  const draft = await loadLatestDraft(clients.editorial);
-  session = { credentials, editorial: clients.editorial, site: clients.site, ...draft };
+  if (login.toLowerCase() !== reviewConfig.reviewerLogin.toLowerCase()) throw new Error(`This review area is restricted to ${reviewConfig.reviewerLogin}. Connected as ${login}.`);
+  if (!access.editorial.canRead || !access.editorial.canWrite || !access.site.canWrite) throw new Error("The PAT needs Contents: read and write for ai-news-daily and ai-news-daily-editorial.");
+  connection = { credentials, editorial: clients.editorial, site: clients.site };
+  await refreshDrafts();
   setSignedIn(true, login);
-  emitModel();
-  setStatus(`Ready to review the ${draft.manifest.date} daily article. Its ten supporting concepts publish automatically.`);
+  setStatus(session
+    ? `Ready to review ${pendingDrafts.length} pending article${pendingDrafts.length === 1 ? "" : "s"}.`
+    : "No pending editorial drafts. Published and discarded drafts remain private in the editorial repository.");
 }
 
 function friendlyConnectionError(error: unknown, shared = false): string {
-  if (shared && error instanceof RepositoryError && (error.code === "authentication" || error.code === "permission")) {
-    return "The shared PAT cannot access both news repositories. Update it in the Page Apps hub with Contents: read and write for ai-news-daily and ai-news-daily-editorial.";
-  }
+  if (shared && error instanceof RepositoryError && (error.code === "authentication" || error.code === "permission")) return "The shared PAT cannot access both news repositories. Update it in the Page Apps hub with Contents: read and write for ai-news-daily and ai-news-daily-editorial.";
   return error instanceof Error ? error.message : "Could not connect to the review repositories.";
 }
 
@@ -244,6 +322,8 @@ async function useSharedCredential(): Promise<void> {
     await finishConnection(credentials);
   } catch (error) {
     await credentials.disconnect();
+    connection = undefined;
+    session = undefined;
     setSignedIn(false);
     emitConnection("shared");
     setStatus(friendlyConnectionError(error, true), { error: true });
@@ -264,6 +344,8 @@ async function connectManually(): Promise<void> {
     await finishConnection(credentials);
   } catch (error) {
     await credentials.disconnect();
+    connection = undefined;
+    session = undefined;
     setSignedIn(false);
     setStatus(friendlyConnectionError(error), { error: true });
   }
@@ -296,18 +378,16 @@ async function restoreConnection(): Promise<void> {
 
   try {
     const shared = sharedNewsPat();
-    if (await shared.hasAppRegistration()) {
-      if (await shared.useShared()) {
-        try {
-          await finishConnection(shared);
-          return;
-        } catch (error) {
-          await shared.disconnect();
-          sharedCredentialAvailable = await shared.hasShared();
-          emitConnection(sharedCredentialAvailable ? "shared" : "manual");
-          setStatus(friendlyConnectionError(error, true), { error: true });
-          return;
-        }
+    if (await shared.hasAppRegistration() && await shared.useShared()) {
+      try {
+        await finishConnection(shared);
+        return;
+      } catch (error) {
+        await shared.disconnect();
+        sharedCredentialAvailable = await shared.hasShared();
+        emitConnection(sharedCredentialAvailable ? "shared" : "manual");
+        setStatus(friendlyConnectionError(error, true), { error: true });
+        return;
       }
     }
     sharedCredentialAvailable = await shared.hasShared();
@@ -322,17 +402,32 @@ async function restoreConnection(): Promise<void> {
   }
 }
 
+function hasUnsavedEdits(current: ReviewSession): boolean {
+  return [current.daily, ...current.stories].some((document) => document.content !== document.original);
+}
+
+async function selectDraft(id: string): Promise<void> {
+  if (!connection || !pendingDrafts.some((draft) => draft.id === id)) return;
+  if (session && session.descriptor.id !== id && hasUnsavedEdits(session) && !window.confirm("Switching articles will discard unsaved edits in this browser. Continue?")) return;
+  try {
+    setStatus("Loading the selected draft…", { busy: true });
+    await refreshDrafts(id);
+    if (session) setStatus(`Reviewing ${session.descriptor.pipeline.title} for ${session.manifest.date}.`);
+  } catch (error) {
+    setStatus(error instanceof Error ? error.message : "Could not load the selected draft.", { error: true });
+  }
+}
+
 async function saveEdits(): Promise<void> {
   if (!session) throw new Error("Connect before saving a review.");
-  const changed = [session.daily, ...session.stories].filter((document) => document.content !== document.original);
+  const current = session;
+  const changed = [current.daily, ...current.stories].filter((document) => document.content !== document.original);
   if (!changed.length) return;
-  await session.editorial.batchCommit({
-    message: `Review AI Daily editorial draft: ${session.manifest.date}`,
+  await current.editorial.batchCommit({
+    message: `Review ${current.descriptor.pipeline.title} editorial draft: ${current.manifest.date}`,
     changes: changed.map((document) => ({ operation: "write" as const, path: document.path, content: document.content, expectedSha: document.sha })),
   });
-  const refreshed = await loadLatestDraft(session.editorial);
-  session = { ...session, ...refreshed };
-  emitModel();
+  await refreshDrafts(current.descriptor.id);
 }
 
 function stableDocument(content: string, reviewer: string): string {
@@ -349,16 +444,42 @@ async function publicExpectedSha(client: RepositoryClient, path: string): Promis
   }
 }
 
+function publicEditionId(current: ReviewSession): string {
+  const value = current.manifest.publicId ?? current.manifest.date;
+  if (!/^\d{4}-\d{2}-\d{2}(?:--[a-z0-9][a-z0-9-]*)?$/.test(value)) throw new Error("The draft has an unsafe public article id.");
+  return value;
+}
+
 async function closePrivateBundle(current: ReviewSession): Promise<void> {
   const documents = [current.daily, ...current.stories];
-  const manifest = { ...current.manifest, status: "published", publishedAt: new Date().toISOString() };
+  const manifest = { ...current.manifest, status: "published", publishedAt: new Date().toISOString(), publishedBy: `human:${reviewConfig.reviewerLogin}` };
   await current.editorial.batchCommit({
-    message: `Close reviewed AI Daily editorial draft: ${current.manifest.date}`,
+    message: `Close reviewed ${current.descriptor.pipeline.title} editorial draft: ${current.manifest.date}`,
     changes: [
       ...documents.map((document) => ({ operation: "write" as const, path: document.path, content: stableDocument(document.content, reviewConfig.reviewerLogin), expectedSha: document.sha })),
       { operation: "write" as const, path: current.manifestFile.path, content: `${JSON.stringify(manifest, null, 2)}\n`, expectedSha: current.manifestFile.sha },
     ],
   });
+}
+
+async function discardCurrentDraft(): Promise<void> {
+  if (!session) {
+    setStatus("Connect before discarding an edition.", { error: true });
+    return;
+  }
+  const current = session;
+  try {
+    setStatus("Marking this private draft as discarded…", { busy: true });
+    const manifest = { ...current.manifest, status: "discarded", discardedAt: new Date().toISOString(), discardedBy: `human:${reviewConfig.reviewerLogin}` };
+    await current.editorial.batchCommit({
+      message: `Discard ${current.descriptor.pipeline.title} editorial draft: ${current.manifest.date}`,
+      changes: [{ operation: "write" as const, path: current.manifestFile.path, content: `${JSON.stringify(manifest, null, 2)}\n`, expectedSha: current.manifestFile.sha }],
+    });
+    await refreshDrafts();
+    setStatus(`Discarded the private ${current.descriptor.pipeline.title} draft. It will not appear in the review queue again.`, { success: true });
+  } catch (error) {
+    setStatus(error instanceof Error ? error.message : "Discarding failed. The private draft remains available.", { error: true });
+  }
 }
 
 async function approveAndPublish(): Promise<void> {
@@ -370,22 +491,25 @@ async function approveAndPublish(): Promise<void> {
     setStatus("Saving the reviewed article…", { busy: true });
     await saveEdits();
     if (!session) return;
-    const documents = [session.daily, ...session.stories];
-    const paths = [`content/daily/${session.manifest.date}.md`, ...session.stories.map((story) => `content/news/${story.path.split("/").at(-1)}`)];
-    if (new Set(paths).size !== 11) throw new Error("Publication paths are not a valid daily bundle.");
+    const current = session;
+    const documents = [current.daily, ...current.stories];
+    const editionId = publicEditionId(current);
+    const paths = [`content/daily/${editionId}.md`, ...current.stories.map((story) => `content/news/${story.path.split("/").at(-1)}`)];
+    if (new Set(paths).size !== 11) throw new Error("Publication paths are not a valid editorial bundle.");
     setStatus("Publishing the article and its supporting news concepts…", { busy: true });
     const changes = await Promise.all(documents.map(async (document, index) => ({
       operation: "write" as const,
       path: paths[index],
       content: stableDocument(document.content, reviewConfig.reviewerLogin),
-      expectedSha: await publicExpectedSha(session!.site, paths[index]),
+      expectedSha: await publicExpectedSha(current.site, paths[index]),
     })));
-    const result = await session.site.batchCommit({ message: `Publish AI Daily Brief: ${session.manifest.date}`, changes });
+    const result = await current.site.batchCommit({ message: `Publish ${current.descriptor.pipeline.title}: ${current.manifest.date}`, changes });
     try {
-      await closePrivateBundle(session);
-      setStatus(`Published ${session.manifest.date} in ${result.commitSha.slice(0, 7)}. GitHub Pages is rebuilding now.`, { published: true });
+      await closePrivateBundle(current);
+      await refreshDrafts();
+      setStatus(`Published ${current.descriptor.pipeline.title} in ${result.commitSha.slice(0, 7)}. GitHub Pages is rebuilding now.`, { success: true });
     } catch {
-      setStatus(`Published ${session.manifest.date} in ${result.commitSha.slice(0, 7)}, but could not close the private draft. Reconnect before approving another edition.`, { published: true, error: true });
+      setStatus(`Published ${current.descriptor.pipeline.title} in ${result.commitSha.slice(0, 7)}, but could not close the private draft. Reconnect before approving another edition.`, { success: true, error: true });
     }
   } catch (error) {
     setStatus(error instanceof Error ? error.message : "Publishing failed. Your private draft remains available to retry.", { error: true });
@@ -396,6 +520,8 @@ export function mountReviewController(): void {
   window.addEventListener("ai-daily-review:sign-in", () => void connectRequested());
   window.addEventListener("ai-daily-review:manual-sign-in", () => void connectManually());
   window.addEventListener("ai-daily-review:edit", (event) => updateDailyDocument((event as CustomEvent<DailyEdit>).detail));
+  window.addEventListener("ai-daily-review:select-draft", (event) => void selectDraft((event as CustomEvent<{ id?: string }>).detail?.id ?? ""));
+  window.addEventListener("ai-daily-review:discard", () => void discardCurrentDraft());
   window.addEventListener("ai-daily-review:publish", () => void approveAndPublish());
   void restoreConnection();
 }

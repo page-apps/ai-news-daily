@@ -4,8 +4,8 @@ import { STANDARD_SECURITY_DISCLOSURE } from "@repo-apps/ui";
 
 <section class="review-page" aria-labelledby="review-title">
   <div class="review-kicker"><p class="eyebrow">EDITORIAL CONTROL ROOM</p><span class="security-badge">Signed out · secure by default</span></div>
-  <h1 id="review-title">Review one complete edition.</h1>
-  <p class="review-lede">Read and refine the full daily article with its citations. The ten linked news concepts stay behind the scenes and publish automatically with your approval.</p>
+  <h1 id="review-title">Review independent editions.</h1>
+  <p class="review-lede">Each research pipeline creates its own daily article. Choose a pending draft to refine, publish it on its own, or retain it privately without publishing.</p>
 
   <section class="signed-out" aria-labelledby="signed-out-title">
     <h2 id="signed-out-title">Connect to the private draft</h2>
@@ -23,9 +23,15 @@ import { STANDARD_SECURITY_DISCLOSURE } from "@repo-apps/ui";
     <p class="field-hint" data-auth-message role="status" aria-live="polite"></p>
   </section>
 
+  <section class="draft-queue" data-draft-queue hidden aria-labelledby="draft-queue-title">
+    <div class="queue-heading"><div><p class="eyebrow">PENDING DRAFTS</p><h2 id="draft-queue-title">Choose an article to review.</h2></div><span data-draft-count></span></div>
+    <div class="draft-list" data-draft-list></div>
+    <p class="empty-state" data-empty-drafts hidden>No pending drafts. Published and discarded drafts stay in the private editorial repository.</p>
+  </section>
+
   <section class="workspace" data-review-workspace hidden aria-labelledby="workspace-title">
     <div class="workspace-bar">
-      <div><h2 id="workspace-title">Daily article</h2><p class="workspace-meta" data-edition-meta></p></div>
+      <div><h2 id="workspace-title">Selected article</h2><p class="workspace-meta" data-edition-meta></p></div>
       <span class="status-pill" data-edition-status>Draft</span>
     </div>
     <p class="workspace-message" data-review-message role="status" aria-live="polite"></p>
@@ -60,17 +66,23 @@ import { STANDARD_SECURITY_DISCLOSURE } from "@repo-apps/ui";
       </details>
 
       <div class="editor-footer">
-        <span class="save-note">Edits are saved to the private draft when you approve.</span>
-        <button class="publish-button" type="button" data-publish>Approve article &amp; publish</button>
+        <span class="save-note">Edits are saved to the private draft when you approve. Discarded drafts remain private and leave this queue.</span>
+        <div class="editor-actions"><button class="quiet-action" type="button" data-discard>Discard private draft</button><button class="publish-button" type="button" data-publish>Approve article &amp; publish</button></div>
       </div>
     </form>
   </section>
 </section>
 
 <dialog class="publish-dialog" data-publish-dialog aria-labelledby="publish-dialog-title">
-  <h2 id="publish-dialog-title">Approve this daily article?</h2>
+  <h2 id="publish-dialog-title">Approve this article?</h2>
   <p>Your edited article and its source list will become public. The ten supporting news concepts will be published automatically for tags and connected-news navigation.</p>
   <div class="dialog-actions"><button type="button" data-cancel-publish>Keep reviewing</button><button class="confirm" type="button" data-confirm-publish>Approve &amp; publish</button></div>
+</dialog>
+
+<dialog class="publish-dialog" data-discard-dialog aria-labelledby="discard-dialog-title">
+  <h2 id="discard-dialog-title">Discard this private draft?</h2>
+  <p>The article will remain in the private editorial repository, but it will no longer appear in this review queue and cannot be published from here unless restored manually.</p>
+  <div class="dialog-actions"><button type="button" data-cancel-discard>Keep reviewing</button><button class="confirm" type="button" data-confirm-discard>Discard draft</button></div>
 </dialog>
 
 <script>
@@ -79,6 +91,8 @@ import { STANDARD_SECURITY_DISCLOSURE } from "@repo-apps/ui";
   const workspace = root?.querySelector("[data-review-workspace]");
   const form = workspace?.querySelector("[data-review-form]");
   const dialog = document.querySelector("[data-publish-dialog]");
+  const discardDialog = document.querySelector("[data-discard-dialog]");
+  const draftQueue = root?.querySelector("[data-draft-queue]");
   const text = (value) => value == null ? "" : String(value);
   const list = (value) => Array.isArray(value) ? value : text(value).split(",").map((item) => item.trim()).filter(Boolean);
 
@@ -124,8 +138,25 @@ import { STANDARD_SECURITY_DISCLOSURE } from "@repo-apps/ui";
     window.dispatchEvent(new CustomEvent("ai-daily-review:edit", { detail: { title: form.elements.title.value, summary: form.elements.summary.value, body: form.elements.body.value, categories: list(form.elements.categories.value), tags: list(form.elements.tags.value), sources: sourceValues() } }));
   };
 
+  const renderQueue = (model) => {
+    if (!draftQueue) return;
+    draftQueue.hidden = false;
+    const drafts = Array.isArray(model?.drafts) ? model.drafts : [];
+    const count = draftQueue.querySelector("[data-draft-count]"); if (count) count.textContent = `${drafts.length} pending`;
+    const listContainer = draftQueue.querySelector("[data-draft-list]"); const empty = draftQueue.querySelector("[data-empty-drafts]");
+    listContainer?.replaceChildren(); if (empty) empty.hidden = drafts.length > 0;
+    drafts.forEach((draft) => {
+      const button = document.createElement("button"); button.type = "button"; button.className = "draft-card"; button.dataset.draftId = draft.id; button.setAttribute("aria-pressed", String(draft.id === model.selectedDraftId));
+      const date = document.createElement("time"); date.textContent = text(draft.date);
+      const copy = document.createElement("span"); const title = document.createElement("strong"); title.textContent = text(draft.pipeline?.title || "Untitled pipeline"); const categories = document.createElement("small"); categories.textContent = list(draft.pipeline?.categories).join(" · "); copy.append(title, categories);
+      const arrow = document.createElement("i"); arrow.textContent = "→"; button.append(date, copy, arrow); listContainer?.append(button);
+    });
+  };
+
   const render = (model) => {
-    if (!model?.edition || !workspace || !form) return;
+    renderQueue(model);
+    if (!workspace || !form) return;
+    if (!model?.edition) { workspace.hidden = true; return; }
     const edition = model.edition;
     workspace.hidden = false;
     const meta = workspace.querySelector("[data-edition-meta]"); if (meta) meta.textContent = [edition.date, edition.title].filter(Boolean).join(" · ");
@@ -149,6 +180,16 @@ import { STANDARD_SECURITY_DISCLOSURE } from "@repo-apps/ui";
   });
   document.querySelector("[data-cancel-publish]")?.addEventListener("click", () => dialog?.close());
   document.querySelector("[data-confirm-publish]")?.addEventListener("click", () => { dialog?.close(); window.dispatchEvent(new CustomEvent("ai-daily-review:publish")); });
+  root?.querySelector("[data-discard]")?.addEventListener("click", () => {
+    if (typeof discardDialog?.showModal === "function") discardDialog.showModal();
+    else if (window.confirm("Discard this private draft? It will remain in the editorial repository.")) window.dispatchEvent(new CustomEvent("ai-daily-review:discard"));
+  });
+  document.querySelector("[data-cancel-discard]")?.addEventListener("click", () => discardDialog?.close());
+  document.querySelector("[data-confirm-discard]")?.addEventListener("click", () => { discardDialog?.close(); window.dispatchEvent(new CustomEvent("ai-daily-review:discard")); });
+  draftQueue?.addEventListener("click", (event) => {
+    const button = event.target?.closest?.("[data-draft-id]");
+    if (button?.dataset?.draftId) window.dispatchEvent(new CustomEvent("ai-daily-review:select-draft", { detail: { id: button.dataset.draftId } }));
+  });
 
   window.addEventListener("ai-daily-review:model", (event) => render(event.detail));
   window.addEventListener("ai-daily-review:connection", (event) => {
@@ -158,9 +199,9 @@ import { STANDARD_SECURITY_DISCLOSURE } from "@repo-apps/ui";
     if (manual) manual.hidden = mode !== "shared"; if (disclosure) disclosure.hidden = mode !== "shared"; if (copy) copy.textContent = mode === "shared" ? "A PAT from the Page Apps hub is ready on this browser." : mode === "manual" ? "No Page Apps PAT is available on this browser yet." : "Checking this browser for your Page Apps credential.";
   });
   window.addEventListener("ai-daily-review:status", (event) => {
-    const detail = event.detail || {}; const publish = root?.querySelector("[data-publish]"); const confirm = document.querySelector("[data-confirm-publish]"); const primary = root?.querySelector("[data-sign-in]");
-    if (publish) { publish.disabled = Boolean(detail.busy || detail.published); publish.textContent = detail.published ? "Published" : detail.busy ? "Working…" : "Approve article & publish"; }
-    if (confirm) confirm.disabled = Boolean(detail.busy); if (primary) primary.disabled = Boolean(detail.busy);
-    root?.querySelectorAll("[data-review-message], [data-auth-message]").forEach((target) => { target.textContent = text(detail.message); target.dataset.tone = detail.error ? "error" : detail.published ? "success" : "neutral"; });
+    const detail = event.detail || {}; const publish = root?.querySelector("[data-publish]"); const discard = root?.querySelector("[data-discard]"); const confirm = document.querySelector("[data-confirm-publish]"); const discardConfirm = document.querySelector("[data-confirm-discard]"); const primary = root?.querySelector("[data-sign-in]");
+    if (publish) { publish.disabled = Boolean(detail.busy); publish.textContent = detail.busy ? "Working…" : "Approve article & publish"; }
+    if (discard) discard.disabled = Boolean(detail.busy); if (confirm) confirm.disabled = Boolean(detail.busy); if (discardConfirm) discardConfirm.disabled = Boolean(detail.busy); if (primary) primary.disabled = Boolean(detail.busy);
+    root?.querySelectorAll("[data-review-message], [data-auth-message]").forEach((target) => { target.textContent = text(detail.message); target.dataset.tone = detail.error ? "error" : detail.success ? "success" : "neutral"; });
   });
 </script>

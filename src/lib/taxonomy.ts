@@ -1,9 +1,10 @@
-export const categoryNames = ["Models & research", "Products & deployment", "Business & markets", "Infrastructure & compute", "Policy & governance", "Safety & society", "Science & applications", "Open source"] as const;
+export const categoryNames = ["Models & research", "Products & deployment", "Software engineering & web development", "Business & markets", "Infrastructure & compute", "Policy & governance", "Safety & society", "Science & applications", "Open source"] as const;
 export type Category = typeof categoryNames[number];
 
 export const categoryDescriptions: Record<Category, string> = {
   "Models & research": "Frontier models, techniques, benchmarks and fundamental research.",
   "Products & deployment": "What people can use, how it is shipped, and how it performs in practice.",
+  "Software engineering & web development": "AI-assisted software delivery, coding agents, developer platforms and modern web development.",
   "Business & markets": "Companies, investment, competition, partnerships and adoption.",
   "Infrastructure & compute": "Chips, clouds, energy, data centres and the systems beneath AI.",
   "Policy & governance": "Rules, institutions, standards, law and international coordination.",

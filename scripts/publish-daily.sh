@@ -4,12 +4,19 @@ set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 
-latest="$(find content/daily -maxdepth 1 -type f -name '*.md' -print | sort | tail -n 1)"
+edition=""
+for arg in "$@"; do case "$arg" in --edition=*) edition="${arg#--edition=}";; esac; done
+latest="${edition:+content/daily/$edition.md}"
+if [[ -n "$latest" && ! -f "$latest" ]]; then
+  echo "No daily edition found for $edition." >&2
+  exit 1
+fi
+if [[ -z "$latest" ]]; then latest="$(find content/daily -maxdepth 1 -type f -name '*.md' -print | sort | tail -n 1)"; fi
 if [[ -z "$latest" ]]; then
   echo "No daily edition found." >&2
   exit 1
 fi
-node scripts/review-daily.mjs
+node scripts/review-daily.mjs --edition="$(basename "$latest" .md)"
 
 git add -- content/daily content/news
 if git diff --cached --quiet -- content/daily content/news; then

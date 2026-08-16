@@ -14,6 +14,7 @@ const status = z.enum(["draft", "stable", "deprecated"]).default("stable");
 const category = z.enum([
   "Models & research",
   "Products & deployment",
+  "Software engineering & web development",
   "Business & markets",
   "Infrastructure & compute",
   "Policy & governance",
@@ -30,6 +31,7 @@ const knowledge = {
   tags: z.array(z.string().min(1)).default([]),
   categories: z.array(category).default([]),
   sources: z.array(source).default([]),
+  pipeline: z.string().regex(/^[a-z0-9][a-z0-9-]*$/).optional(),
   generated: actorEvent.optional(),
   verified: z.union([actorEvent, z.array(actorEvent)]).optional(),
   status,

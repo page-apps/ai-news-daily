@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Creates an OKF-inspired daily knowledge bundle from two agent passes. */
+/** Creates one or more isolated OKF-inspired editorial bundles from configured research pipelines. */
 import { mkdir, readFile, writeFile, access, mkdtemp, rename, rm } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -10,21 +10,47 @@ const editorialRoot = process.env.NEWS_EDITORIAL_REPO ?? process.env.EDITORIAL_R
 if (!editorialRoot) throw new Error("Set NEWS_EDITORIAL_REPO to the private editorial repository working tree; refusing to write the public site.");
 const repository = resolve(editorialRoot);
 if (repository === resolve(root) || repository.startsWith(`${resolve(root)}/`)) throw new Error("NEWS_EDITORIAL_REPO must be outside the public ai-news-daily repository.");
-const dateArg = process.argv.find((arg) => arg.startsWith("--date="))?.slice(7);
+
+const argumentsList = process.argv.slice(2);
+const dateArg = argumentsList.find((arg) => arg.startsWith("--date="))?.slice(7);
 const date = dateArg ?? new Intl.DateTimeFormat("en-CA", { timeZone: process.env.NEWS_TIMEZONE ?? "Australia/Sydney" }).format(new Date());
 if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Use --date=YYYY-MM-DD.");
+const requestedPipelineIds = argumentsList.filter((arg) => arg.startsWith("--pipeline=")).map((arg) => arg.slice(11));
+const generateAll = argumentsList.includes("--all");
+if (generateAll && requestedPipelineIds.length) throw new Error("Use either --all or one or more --pipeline=ID arguments.");
 
 const researchAgent = process.env.NEWS_RESEARCH_AGENT ?? "codex";
 const writerAgent = process.env.NEWS_WRITER_AGENT ?? researchAgent;
 const researchModel = process.env.NEWS_RESEARCH_MODEL ?? "gpt-5.6-luna";
 const writerModel = process.env.NEWS_WRITER_MODEL ?? "gpt-5.6-sol";
 const preferences = await readFile(join(root, "prompts/preferences.md"), "utf8");
-const generatedAt = new Date().toISOString();
-const categories = ["Models & research", "Products & deployment", "Business & markets", "Infrastructure & compute", "Policy & governance", "Safety & society", "Science & applications", "Open source"];
-const destination = join(repository, "drafts", date);
+const categoryNames = ["Models & research", "Products & deployment", "Software engineering & web development", "Business & markets", "Infrastructure & compute", "Policy & governance", "Safety & society", "Science & applications", "Open source"];
 
-try { await access(destination); throw new Error(`${destination} already exists; refusing to overwrite or merge an editorial bundle.`); }
-catch (error) { if (error.code !== "ENOENT") throw error; }
+function pipelineConfig(value) {
+  if (!value || typeof value !== "object" || !Array.isArray(value.pipelines)) throw new Error("prompts/pipelines.json must contain a pipelines array.");
+  const ids = new Set();
+  return value.pipelines.map((candidate, index) => {
+    if (!candidate || typeof candidate !== "object") throw new Error(`Pipeline ${index + 1} must be an object.`);
+    const id = String(candidate.id ?? "");
+    const title = String(candidate.title ?? "").trim();
+    const description = String(candidate.description ?? "").trim();
+    const prompt = String(candidate.prompt ?? "").trim();
+    const categories = Array.isArray(candidate.categories) ? [...new Set(candidate.categories.filter((category) => typeof category === "string"))] : [];
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(id) || ids.has(id)) throw new Error(`Pipeline ${index + 1} needs a unique lowercase id.`);
+    if (!title || !description || !prompt) throw new Error(`Pipeline ${id} needs title, description and prompt values.`);
+    if (!categories.length || categories.some((category) => !categoryNames.includes(category))) throw new Error(`Pipeline ${id} has an unsupported category.`);
+    ids.add(id);
+    return { id, title, description, prompt, categories };
+  });
+}
+
+const configuredPipelines = pipelineConfig(JSON.parse(await readFile(join(root, "prompts/pipelines.json"), "utf8")));
+const defaultPipeline = configuredPipelines.find((pipeline) => pipeline.id === "ai") ?? configuredPipelines[0];
+const selectedPipelines = generateAll
+  ? configuredPipelines
+  : requestedPipelineIds.length
+    ? requestedPipelineIds.map((id) => configuredPipelines.find((pipeline) => pipeline.id === id) ?? (() => { throw new Error(`Unknown pipeline '${id}'. Check prompts/pipelines.json.`); })())
+    : [defaultPipeline];
 
 function run(command, args) {
   return new Promise((resolve, reject) => {
@@ -50,34 +76,44 @@ function parseJson(output) {
   const clean = output.trim().replace(/^```json\s*/i, "").replace(/\s*```\s*$/, "");
   try { return JSON.parse(clean); } catch { throw new Error("The signal desk did not return valid JSON. No files were written; rerun the job."); }
 }
-function normaliseStory(story, index) {
-  if (!story || typeof story !== "object" || !story.title || !story.summary || !story.whyItMatters) throw new Error(`Signal ${index + 1} is missing title, summary, or whyItMatters.`);
-  const sources = Array.isArray(story.sources) ? story.sources.filter((source) => /^https?:\/\//.test(source?.resource ?? "")).slice(0, 3) : [];
-  if (!sources.length) throw new Error(`Signal ${index + 1} has no usable source URL.`);
-  const tags = [...new Set((Array.isArray(story.tags) ? story.tags : []).map((tag) => String(tag).trim().toLowerCase()).filter(Boolean))].slice(0, 8);
-  const storyCategories = [...new Set((Array.isArray(story.categories) ? story.categories : []).filter((category) => categories.includes(category)))];
-  return { title: String(story.title).trim(), description: String(story.description ?? story.summary).trim(), summary: String(story.summary).trim(), why: String(story.whyItMatters).trim(), tags, categories: storyCategories.length ? storyCategories : ["Models & research"], sources };
-}
 function sourceFrontmatter(sources) {
   return sources.map((source, index) => `  - id: source-${index + 1}\n    resource: ${yaml(source.resource)}${source.title ? `\n    title: ${yaml(source.title)}` : ""}${source.author ? `\n    author: ${yaml(source.author)}` : ""}`).join("\n");
 }
 
-const scoutPrompt = `You are the signal desk for AI Daily Brief. Today is ${date}. Use web research to identify the ten most consequential, genuinely new AI developments from the preceding 24 hours. Prefer primary sources and reputable reporting. Do not invent facts, links, dates, quotes, metrics, or source URLs. Select for durable importance, not attention volume.
+async function generatePipeline(pipeline) {
+  const destination = join(repository, "drafts", date, pipeline.id);
+  try { await access(destination); throw new Error(`${destination} already exists; refusing to overwrite or merge an editorial bundle.`); }
+  catch (error) { if (error.code !== "ENOENT") throw error; }
 
-Return ONLY valid JSON: an array with exactly 10 objects. Every object must have title, description, summary (2-3 factual sentences), whyItMatters, categories (one or two exact values from ${JSON.stringify(categories)}), tags (3-8 short lowercase strings), and sources (1-3 objects, each with resource absolute URL and optional title and author). Do not use Markdown or a code fence.
+  const normaliseStory = (story, index) => {
+    if (!story || typeof story !== "object" || !story.title || !story.summary || !story.whyItMatters) throw new Error(`Signal ${index + 1} is missing title, summary, or whyItMatters.`);
+    const sources = Array.isArray(story.sources) ? story.sources.filter((source) => /^https?:\/\//.test(source?.resource ?? "")).slice(0, 3) : [];
+    if (!sources.length) throw new Error(`Signal ${index + 1} has no usable source URL.`);
+    const tags = [...new Set((Array.isArray(story.tags) ? story.tags : []).map((tag) => String(tag).trim().toLowerCase()).filter(Boolean))].slice(0, 8);
+    const storyCategories = [...new Set((Array.isArray(story.categories) ? story.categories : []).filter((category) => pipeline.categories.includes(category)))];
+    return { title: String(story.title).trim(), description: String(story.description ?? story.summary).trim(), summary: String(story.summary).trim(), why: String(story.whyItMatters).trim(), tags, categories: storyCategories.length ? storyCategories : [pipeline.categories[0]], sources };
+  };
+
+  const scoutPrompt = `You are the signal desk for the ${pipeline.title}. Today is ${date}. Use web research to identify the ten most consequential, genuinely new developments from the preceding 24 hours that fit this pipeline. Prefer primary sources and reputable reporting. Do not invent facts, links, dates, quotes, metrics, or source URLs. Select for durable importance, not attention volume.
+
+Pipeline scope (takes precedence over general preferences):\n${pipeline.prompt}
+
+Return ONLY valid JSON: an array with exactly 10 objects. Every object must have title, description, summary (2-3 factual sentences), whyItMatters, categories (one or two exact values from ${JSON.stringify(pipeline.categories)}), tags (3-8 short lowercase strings), and sources (1-3 objects, each with resource absolute URL and optional title and author). Do not use Markdown or a code fence.
 
 Editorial preferences:\n${preferences}`;
 
-console.log(`Researching ${date} with ${researchAgent}/${researchModel}…`);
-const signals = parseJson(await ask(researchAgent, researchModel, scoutPrompt));
-if (!Array.isArray(signals) || signals.length !== 10) throw new Error("The signal desk must return exactly ten stories. No files were written.");
-const stories = signals.map(normaliseStory);
-const storyIds = stories.map((story, index) => `${date}-${String(index + 1).padStart(2, "0")}-${slugify(story.title)}`);
+  console.log(`Researching ${date} · ${pipeline.id} with ${researchAgent}/${researchModel}…`);
+  const signals = parseJson(await ask(researchAgent, researchModel, scoutPrompt));
+  if (!Array.isArray(signals) || signals.length !== 10) throw new Error("The signal desk must return exactly ten stories. No files were written.");
+  const stories = signals.map(normaliseStory);
+  const storyIds = stories.map((story, index) => `${date}-${pipeline.id}-${String(index + 1).padStart(2, "0")}-${slugify(story.title)}`);
 
-const writerPrompt = `You are the editor of AI Daily Brief. Produce the final daily edition for ${date} from the verified signal-desk material below. Research the supplied source links yourself where needed. Never promote a claim to fact without evidence. Write in Australian English for an intelligent general reader using a phone or e-reader.
+  const writerPrompt = `You are the editor of the ${pipeline.title}. Produce the final daily edition for ${date} from the verified signal-desk material below. Research the supplied source links yourself where needed. Never promote a claim to fact without evidence. Write in Australian English for an intelligent general reader using a phone or e-reader.
+
+Pipeline scope (takes precedence over general preferences):\n${pipeline.prompt}
 
 Return Markdown only: no YAML front matter, no title, no code fence. Use this structure exactly:
-## The day in AI
+## The day in ${pipeline.title.replace(/ Brief$/, "")}
 Two short paragraphs synthesising the day.
 ## The deeper pattern
 A clear, evidence-grounded analysis connecting the biggest stories. Include a Mermaid diagram only if it genuinely clarifies a relationship. Use LaTex only where a formula earns its place.
@@ -92,36 +128,48 @@ Editorial preferences:\n${preferences}
 
 Signal-desk material:\n${JSON.stringify(stories, null, 2)}`;
 
-console.log(`Writing ${date} with ${writerAgent}/${writerModel}…`);
-const body = markdownOnly(await ask(writerAgent, writerModel, writerPrompt));
-const words = body.replace(/[`*_#>[\]()]|https?:\/\/\S+/g, " ").trim().split(/\s+/).filter(Boolean).length;
-const readingMinutes = Math.max(4, Math.ceil(words / 220));
-const allTags = [...new Set(stories.flatMap((story) => story.tags))].slice(0, 12);
-const allCategories = [...new Set(stories.flatMap((story) => story.categories))];
-const allSources = [...new Map(stories.flatMap((story) => story.sources).map((source) => [source.resource, source])).values()].slice(0, 30);
-const title = `AI Daily Brief — ${new Date(`${date}T12:00:00Z`).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}`;
-const dailyDocument = `---\ntype: Daily Brief\ntitle: ${yaml(title)}\ndescription: ${yaml("Ten consequential AI developments and the deeper pattern behind them.")}\ndate: ${date}\nreadingMinutes: ${readingMinutes}\ncategories: ${JSON.stringify(allCategories)}\ntags: ${JSON.stringify(allTags)}\nsources:\n${sourceFrontmatter(allSources)}\ngenerated: { by: ${yaml(`${writerAgent}/${writerModel}`)}, at: ${yaml(generatedAt)} }\nstatus: draft\nstale_after: ${date}\nnews: ${JSON.stringify(storyIds)}\n---\n\n${body}\n`;
+  console.log(`Writing ${date} · ${pipeline.id} with ${writerAgent}/${writerModel}…`);
+  const body = markdownOnly(await ask(writerAgent, writerModel, writerPrompt));
+  const words = body.replace(/[`*_#>[\]()]|https?:\/\/\S+/g, " ").trim().split(/\s+/).filter(Boolean).length;
+  const readingMinutes = Math.max(4, Math.ceil(words / 220));
+  const allTags = [...new Set(stories.flatMap((story) => story.tags))].slice(0, 12);
+  const allCategories = [...new Set(stories.flatMap((story) => story.categories))];
+  const allSources = [...new Map(stories.flatMap((story) => story.sources).map((source) => [source.resource, source])).values()].slice(0, 30);
+  const title = `${pipeline.title} — ${new Date(`${date}T12:00:00Z`).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}`;
+  const dailyDocument = `---\ntype: Daily Brief\ntitle: ${yaml(title)}\ndescription: ${yaml(pipeline.description)}\ndate: ${date}\nreadingMinutes: ${readingMinutes}\ncategories: ${JSON.stringify(allCategories)}\ntags: ${JSON.stringify(allTags)}\npipeline: ${yaml(pipeline.id)}\nsources:\n${sourceFrontmatter(allSources)}\ngenerated: { by: ${yaml(`${writerAgent}/${writerModel}`)}, at: ${yaml(new Date().toISOString())} }\nstatus: draft\nstale_after: ${date}\nnews: ${JSON.stringify(storyIds)}\n---\n\n${body}\n`;
 
-await mkdir(join(repository, "drafts"), { recursive: true });
-const staging = await mkdtemp(join(repository, "drafts", `.${date}.`));
-try {
-await mkdir(join(staging, "news"), { recursive: true });
-for (const [index, story] of stories.entries()) {
-  const id = storyIds[index];
-  const file = join(staging, "news", `${id}.md`);
-  const related = stories.map((candidate, candidateIndex) => ({ candidate, candidateIndex, shared: candidate.tags.filter((tag) => story.tags.includes(tag)).length + candidate.categories.filter((category) => story.categories.includes(category)).length })).filter(({ candidateIndex, shared }) => candidateIndex !== index && shared > 0).sort((a, b) => b.shared - a.shared).slice(0, 3);
-  const relatedLinks = related.length ? `\n## Related coverage\n\n${related.map(({ candidate, candidateIndex }) => `- [${candidate.title}](./${storyIds[candidateIndex]}.md)`).join("\n")}\n` : "";
-  const sourceLinks = story.sources.map((source) => `- [${source.title ?? source.resource}](${source.resource})`).join("\n");
-  const storyDocument = `---\ntype: AI News\ntitle: ${yaml(story.title)}\ndescription: ${yaml(story.description)}\ndate: ${date}\nsummary: ${yaml(story.summary)}\ncategories: ${JSON.stringify(story.categories)}\ntags: ${JSON.stringify(story.tags)}\nsources:\n${sourceFrontmatter(story.sources)}\ngenerated: { by: ${yaml(`${researchAgent}/${researchModel}`)}, at: ${yaml(generatedAt)} }\nstatus: draft\nstale_after: ${date}\n---\n\n## Summary\n\n${story.summary}\n\n## Why it matters\n\n${story.why}\n${relatedLinks}\n## Sources\n\n${sourceLinks}\n`;
-  await writeFile(file, storyDocument, "utf8");
+  await mkdir(join(repository, "drafts", date), { recursive: true });
+  const staging = await mkdtemp(join(repository, "drafts", date, `.${pipeline.id}.`));
+  try {
+    await mkdir(join(staging, "news"), { recursive: true });
+    for (const [index, story] of stories.entries()) {
+      const id = storyIds[index];
+      const related = stories.map((candidate, candidateIndex) => ({ candidate, candidateIndex, shared: candidate.tags.filter((tag) => story.tags.includes(tag)).length + candidate.categories.filter((category) => story.categories.includes(category)).length })).filter(({ candidateIndex, shared }) => candidateIndex !== index && shared > 0).sort((a, b) => b.shared - a.shared).slice(0, 3);
+      const relatedLinks = related.length ? `\n## Related coverage\n\n${related.map(({ candidate, candidateIndex }) => `- [${candidate.title}](./${storyIds[candidateIndex]}.md)`).join("\n")}\n` : "";
+      const sourceLinks = story.sources.map((source) => `- [${source.title ?? source.resource}](${source.resource})`).join("\n");
+      const storyDocument = `---\ntype: AI News\ntitle: ${yaml(story.title)}\ndescription: ${yaml(story.description)}\ndate: ${date}\nsummary: ${yaml(story.summary)}\ncategories: ${JSON.stringify(story.categories)}\ntags: ${JSON.stringify(story.tags)}\npipeline: ${yaml(pipeline.id)}\nsources:\n${sourceFrontmatter(story.sources)}\ngenerated: { by: ${yaml(`${researchAgent}/${researchModel}`)}, at: ${yaml(new Date().toISOString())} }\nstatus: draft\nstale_after: ${date}\n---\n\n## Summary\n\n${story.summary}\n\n## Why it matters\n\n${story.why}\n${relatedLinks}\n## Sources\n\n${sourceLinks}\n`;
+      await writeFile(join(staging, "news", `${id}.md`), storyDocument, "utf8");
+    }
+    await writeFile(join(staging, "daily.md"), dailyDocument, "utf8");
+    const manifest = {
+      schema: "ai-news-daily/editorial-draft/v2",
+      date,
+      pipeline: { id: pipeline.id, title: pipeline.title, categories: pipeline.categories },
+      publicId: `${date}--${pipeline.id}`,
+      status: "draft",
+      daily: "daily.md",
+      news: storyIds.map((id) => `news/${id}.md`),
+      files: ["daily.md", ...storyIds.map((id) => `news/${id}.md`)],
+      generatedAt: new Date().toISOString(),
+    };
+    await writeFile(join(staging, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+    await run(process.execPath, [join(root, "scripts/validate-editorial-draft.mjs"), `--bundle=${staging}`, `--date=${date}`]);
+    await rename(staging, destination);
+  } catch (error) {
+    await rm(staging, { recursive: true, force: true });
+    throw error;
+  }
+  console.log(`Created ${pipeline.id} editorial bundle for ${date} in ${destination}.`);
 }
-await writeFile(join(staging, "daily.md"), dailyDocument, "utf8");
-const manifest = { schema: "ai-news-daily/editorial-draft/v1", date, status: "draft", daily: "daily.md", news: storyIds.map((id) => `news/${id}.md`), files: ["daily.md", ...storyIds.map((id) => `news/${id}.md`)], generatedAt };
-await writeFile(join(staging, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
-await run(process.execPath, [join(root, "scripts/validate-editorial-draft.mjs"), `--bundle=${staging}`, `--date=${date}`]);
-await rename(staging, destination);
-} catch (error) {
-  await rm(staging, { recursive: true, force: true });
-  throw error;
-}
-console.log(`Created one daily brief and ten linked news concepts for ${date} in ${destination}.`);
+
+for (const pipeline of selectedPipelines) await generatePipeline(pipeline);

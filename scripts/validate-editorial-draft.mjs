@@ -12,7 +12,12 @@ if (!/^\d{4}-\d{2}-\d{2}$/.test(date ?? bundle.split("/").at(-1))) throw new Err
 
 const manifest = JSON.parse(await readFile(join(bundle, "manifest.json"), "utf8"));
 const expectedDate = date ?? manifest.date;
-if (manifest.schema !== "ai-news-daily/editorial-draft/v1" || manifest.status !== "draft" || manifest.date !== expectedDate) throw new Error("Invalid OKF editorial draft manifest.");
+if (!["ai-news-daily/editorial-draft/v1", "ai-news-daily/editorial-draft/v2"].includes(manifest.schema) || manifest.status !== "draft" || manifest.date !== expectedDate) throw new Error("Invalid OKF editorial draft manifest.");
+if (manifest.schema.endsWith("/v2")) {
+  const pipeline = manifest.pipeline;
+  if (!pipeline || !/^[a-z0-9][a-z0-9-]*$/.test(pipeline.id ?? "") || typeof pipeline.title !== "string" || !Array.isArray(pipeline.categories) || !pipeline.categories.length) throw new Error("Pipeline draft manifests need a valid pipeline definition.");
+  if (manifest.publicId !== `${expectedDate}--${pipeline.id}`) throw new Error("Pipeline draft manifest has an invalid public article id.");
+}
 if (!Array.isArray(manifest.news) || manifest.news.length !== 10 || manifest.daily !== "daily.md") throw new Error("Manifest must contain one daily and ten news concepts.");
 const files = [manifest.daily, ...manifest.news];
 if (!Array.isArray(manifest.files) || manifest.files.length !== 11 || new Set(manifest.files).size !== 11 || manifest.files.some((file) => !files.includes(file))) throw new Error("Manifest file list is incomplete.");

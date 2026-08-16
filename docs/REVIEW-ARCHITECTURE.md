@@ -24,40 +24,46 @@ configuration.
 
 ## Draft bundle
 
-The local generator writes exactly one self-contained bundle per date:
+The local generator writes one self-contained bundle per pipeline and date:
 
 ```text
 drafts/YYYY-MM-DD/
-  manifest.json
-  daily.md
-  news/
-    01-<slug>.md
-    … 10-<slug>.md
+  PIPELINE-ID/
+    manifest.json
+    daily.md
+    news/
+      YYYY-MM-DD-PIPELINE-ID-01-<slug>.md
+      … 10-<slug>.md
 ```
 
-`manifest.json` records the date, ten story IDs, generator versions, and the
-draft bundle schema version. Every Markdown document remains an OKF-inspired
-concept with provenance, tags, categories, generation metadata and `draft`
-lifecycle state.
+`manifest.json` records the date, pipeline identity, unique public article ID,
+ten story IDs, generator versions, and the draft bundle schema version. Every
+Markdown document remains an OKF-inspired concept with provenance, tags,
+categories, generation metadata and `draft` lifecycle state. The legacy
+single-bundle layout is still readable for existing drafts.
 
 ## Browser approval transaction
 
 1. The review page verifies the PAT can read the private editorial repository
    and write the public publication repository. It confirms the authenticated
    GitHub login equals `PUBLIC_NEWS_REVIEWER_LOGIN`.
-2. It reads one selected bundle from the private repository and keeps the file
-   SHAs/head revision. The review UI displays and edits only that in-memory
-   model.
+2. It lists every bundle with `manifest.status: draft` and lets the reviewer
+   choose one, including multiple independent articles from the same day. It
+   keeps the selected bundle’s file SHAs/head revision. The review UI displays
+   and edits only that in-memory model.
 3. Saving edits uses a revision-aware batch commit to the private bundle.
    A changed head is a visible conflict; the reviewer must reload or explicitly
    reapply their edits.
 4. **Approve & publish** first saves outstanding private edits. After an
-   explicit confirmation, it writes the stable daily document and ten stable
-   news documents to the public repository in one batch commit. It adds
+   explicit confirmation, it writes the stable daily document at
+   `content/daily/YYYY-MM-DD--PIPELINE-ID.md` and ten stable news documents to
+   the public repository in one batch commit. It adds
    `verified: { by: human:<GitHub login>, at: <ISO timestamp> }` and changes
    `status` to `stable`.
 5. It then closes the private bundle (`manifest.status: published`) so it is
-   not presented for review again. The public-repository push triggers the
+   not presented for review again. **Discard private draft** instead changes
+   only the private manifest to `discarded`; the bundle remains retained but
+   is no longer listed for review. The public-repository push triggers the
    existing GitHub Pages workflow.
 
 There is no cross-repository atomic Git transaction. If public promotion fails,
@@ -87,5 +93,5 @@ token can be exposed by compromised browser extensions, XSS or a shared device.
 - All reads/writes must use the repository client and pass expected file/head
   revisions; direct `fetch("https://api.github.com")` calls from page UI are
   forbidden.
-- The public promotion batch must contain exactly one daily file plus the ten
-  selected story files and no unrelated paths.
+- Each public promotion batch must contain exactly one selected pipeline daily
+  file plus its ten selected story files and no unrelated paths.

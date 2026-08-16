@@ -31,7 +31,7 @@ if (!/rel=["']manifest["']/.test(indexHtml)) throw new Error("The app shell does
 if (!serviceWorkerRegistrationFound) throw new Error("The app shell does not register its service worker.");
 
 const reviewHtml = await readFile(resolve(dist, "review/index.html"), "utf8");
-for (const required of ["Review one complete edition", "FULL ARTICLE", "CITATIONS", "Approve article &amp; publish"]) {
+for (const required of ["Review independent editions", "PENDING DRAFTS", "FULL ARTICLE", "CITATIONS", "Discard private draft", "Approve article &amp; publish"]) {
   if (!reviewHtml.includes(required)) throw new Error(`Review artifact is missing required UI copy: ${required}`);
 }
 

@@ -1,0 +1,30 @@
+{
+  "schema": "ai-news-daily/pipelines/v1",
+  "pipelines": [
+    {
+      "id": "ai",
+      "title": "AI Daily Brief",
+      "description": "The most consequential developments across AI research, products, deployment and society.",
+      "categories": [
+        "Models & research",
+        "Products & deployment",
+        "Business & markets",
+        "Infrastructure & compute",
+        "Policy & governance",
+        "Safety & society",
+        "Science & applications",
+        "Open source"
+      ],
+      "prompt": "Cover the broad AI landscape. Prioritise consequential model capabilities, provider releases, security, AGI, physical AI, infrastructure and durable industry trends. Leave software-engineering and web-development stories whose primary significance is developer practice to the dedicated pipeline."
+    },
+    {
+      "id": "software-engineering-web-development",
+      "title": "Software Engineering & Web Development Brief",
+      "description": "AI-driven changes to how software and web products are built, tested, secured and operated.",
+      "categories": [
+        "Software engineering & web development"
+      ],
+      "prompt": "Focus strictly on research software engineering and web development. Look for coding agents, software-engineering models, IDE and CLI tools, developer platforms, web frameworks, testing, deployment, observability, application security and meaningful changes to developer workflows. Do not select general AI news unless its primary consequence is how software or web products are built, secured or operated."
+    }
+  ]
+}

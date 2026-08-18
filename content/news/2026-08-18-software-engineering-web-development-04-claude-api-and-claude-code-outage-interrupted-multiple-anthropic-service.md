@@ -16,7 +16,7 @@ sources:
     title: "Anthropic confirms Claude is down in major outage affecting multiple services"
     author: "Mayank Parmar"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-08-17T21:17:09.470Z" }
-verified: { by: "human:cmwen", at: "2026-08-17T22:39:58.450Z" }
+verified: { by: "human:cmwen", at: "2026-08-18T22:15:54.133Z" }
 status: stable
 stale_after: 2026-08-18
 ---

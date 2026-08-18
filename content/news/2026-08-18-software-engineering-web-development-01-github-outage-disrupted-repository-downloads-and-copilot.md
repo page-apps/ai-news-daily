@@ -16,7 +16,7 @@ sources:
     title: "GitHub has Issues as repo downloads hit 50% error rate"
     author: "Richard Speed"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-08-17T21:17:09.468Z" }
-verified: { by: "human:cmwen", at: "2026-08-17T22:39:58.449Z" }
+verified: { by: "human:cmwen", at: "2026-08-18T22:15:54.132Z" }
 status: stable
 stale_after: 2026-08-18
 ---

@@ -47,7 +47,7 @@ sources:
   - id: source-13
     resource: "https://www.cloudflarestatus.com/incidents/f8ms50xkfn4t"
 generated: { by: "codex/gpt-5.6-sol", at: "2026-08-17T21:17:09.466Z" }
-verified: { by: "human:cmwen", at: "2026-08-17T22:39:58.449Z" }
+verified: { by: "human:cmwen", at: "2026-08-18T22:15:54.132Z" }
 status: stable
 stale_after: 2026-08-18
 news: ["2026-08-18-software-engineering-web-development-01-github-outage-disrupted-repository-downloads-and-copilot","2026-08-18-software-engineering-web-development-02-wiz-discloses-an-autonomous-attack-agent-exploiting-a-copilot-checked-sn","2026-08-18-software-engineering-web-development-03-linux-7-2-ships-after-an-unusually-large-ai-heavy-development-cycle","2026-08-18-software-engineering-web-development-04-claude-api-and-claude-code-outage-interrupted-multiple-anthropic-service","2026-08-18-software-engineering-web-development-05-claude-opus-5-and-sonnet-5-suffered-a-separate-developer-facing-degradat","2026-08-18-software-engineering-web-development-06-cursor-s-coding-agents-degraded-when-using-non-fast-grok-4-6","2026-08-18-software-engineering-web-development-07-vercel-dashboard-disruption-affected-observability-analytics-and-firewal","2026-08-18-software-engineering-web-development-08-agentic-ai-workflow-costs-forecast-to-rise-more-than-fivefold-by-2028","2026-08-18-software-engineering-web-development-09-cloudflare-reported-elevated-durable-objects-errors-in-singapore","2026-08-18-software-engineering-web-development-10-cloudflare-investigated-network-performance-issues-in-phoenix-and-los-an"]

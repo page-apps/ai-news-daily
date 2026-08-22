@@ -15,7 +15,7 @@ Prioritise genuinely new, consequential developments in these areas:
 - Coding agents: software-engineering agents, coding models, IDE and CLI integrations, benchmarks, reliability, security and changes to developer workflows.
 - Software engineering and web development: developer platforms, web frameworks, testing, deployment, observability and the practical effects of AI on how software is built, secured and operated.
 
-Do not force every edition to include every topic. Select the ten strongest developments from the preceding 24 hours, giving preference to stories that illuminate a capability change, a product consequence or a durable trend.
+Do not force every edition to include every topic. Select the ten strongest developments from the generator's explicit rolling 24-hour window. Verify the source's publication or material-update time; never fill the edition with an older story, a resurfaced report or a previously accumulated concept. Give preference to stories that illuminate a capability change, a product consequence or a durable trend.
 
 ## Editorial standards
 

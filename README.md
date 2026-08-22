@@ -48,8 +48,11 @@ Use GitHub Copilot CLI for either pass by setting `NEWS_RESEARCH_AGENT=copilot` 
 NEWS_RESEARCH_MODEL=gpt-5.6-luna \
 NEWS_WRITER_MODEL=gpt-5.6-sol \
 NEWS_TIMEZONE=Australia/Sydney \
+NEWS_RUN_TIME=06:30 \
 pnpm generate:daily
 ```
+
+`NEWS_RUN_TIME` defines the end of the rolling 24-hour research window in `NEWS_TIMEZONE` and defaults to `06:30`, matching the example cron schedule. The generator reads published news and private editorial drafts before each run, supplies their titles and source URLs to the research pass, and rejects stale, repeated or duplicate concepts. If ten qualifying unused developments cannot be verified, it stops instead of padding the edition with older news.
 
 For one daily cron job that runs every configured pipeline at 6:30am Sydney time, use absolute paths to both checkouts:
 

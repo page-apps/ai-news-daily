@@ -31,6 +31,7 @@ const knowledge = {
   tags: z.array(z.string().min(1)).default([]),
   categories: z.array(category).default([]),
   sources: z.array(source).default([]),
+  published_at: z.coerce.date().optional(),
   pipeline: z.string().regex(/^[a-z0-9][a-z0-9-]*$/).optional(),
   generated: actorEvent.optional(),
   verified: z.union([actorEvent, z.array(actorEvent)]).optional(),

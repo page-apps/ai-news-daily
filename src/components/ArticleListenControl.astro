@@ -1,0 +1,166 @@
+<div class="listen-control" data-listen-control role="group" aria-labelledby="listen-title">
+  <div class="listen-heading">
+    <p class="eyebrow">LISTEN TO THIS ARTICLE</p>
+    <p id="listen-title">Use your browser’s voice to hear this article read aloud.</p>
+  </div>
+  <div class="listen-actions">
+    <button class="listen-toggle" data-speech-toggle type="button">Listen</button>
+    <button class="listen-stop" data-speech-stop type="button" disabled>Stop</button>
+    <label class="listen-speed">
+      <span>Speed</span>
+      <select data-speech-rate aria-label="Reading speed">
+        <option value="0.75">0.75×</option>
+        <option value="1" selected>1×</option>
+        <option value="1.25">1.25×</option>
+        <option value="1.5">1.5×</option>
+        <option value="2">2×</option>
+      </select>
+    </label>
+  </div>
+  <p class="listen-status" data-speech-status role="status" aria-live="polite">Ready to listen.</p>
+</div>
+
+<script>
+  const controls = document.querySelector<HTMLElement>("[data-listen-control]");
+  const article = controls?.closest<HTMLElement>("article");
+  const toggle = controls?.querySelector<HTMLButtonElement>("[data-speech-toggle]");
+  const stop = controls?.querySelector<HTMLButtonElement>("[data-speech-stop]");
+  const rateSelect = controls?.querySelector<HTMLSelectElement>("[data-speech-rate]");
+  const status = controls?.querySelector<HTMLElement>("[data-speech-status]");
+  const speech = window.speechSynthesis;
+
+  type SpeechState = "idle" | "speaking" | "paused";
+  let state: SpeechState = "idle";
+  let chunks: string[] = [];
+  let chunkIndex = 0;
+  let generation = 0;
+  let activeUtterance: SpeechSynthesisUtterance | null = null;
+
+  const setStatus = (message: string) => {
+    if (status) status.textContent = message;
+  };
+
+  const setState = (nextState: SpeechState) => {
+    state = nextState;
+    if (!toggle || !stop) return;
+
+    const isActive = nextState !== "idle";
+    toggle.textContent = nextState === "paused" ? "Resume" : nextState === "speaking" ? "Pause" : "Listen";
+    toggle.setAttribute("aria-label", nextState === "paused" ? "Resume reading" : nextState === "speaking" ? "Pause reading" : "Listen to article");
+    stop.disabled = !isActive;
+  };
+
+  const splitIntoChunks = (text: string) => {
+    const sentences = text.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g) ?? [text];
+    const result: string[] = [];
+    let current = "";
+
+    for (const sentence of sentences) {
+      const next = `${current} ${sentence}`.trim();
+      if (current && next.length > 220) {
+        result.push(current);
+        current = sentence.trim();
+      } else {
+        current = next;
+      }
+    }
+    if (current) result.push(current);
+    return result;
+  };
+
+  const getArticleText = () => {
+    if (!article) return "";
+    const title = article.querySelector<HTMLElement>("h1")?.innerText ?? "";
+    const dek = article.querySelector<HTMLElement>(".dek")?.innerText ?? "";
+    const body = article.querySelector<HTMLElement>(".article-body")?.innerText ?? "";
+    return [title, dek, body]
+      .map((part) => part.replace(/\s+/g, " ").trim())
+      .filter(Boolean)
+      .join(". ");
+  };
+
+  const finish = (message = "Finished listening.") => {
+    activeUtterance = null;
+    setState("idle");
+    setStatus(message);
+  };
+
+  const speakNextChunk = () => {
+    if (chunkIndex >= chunks.length) {
+      finish();
+      return;
+    }
+
+    const currentGeneration = generation;
+    const utterance = new SpeechSynthesisUtterance(chunks[chunkIndex]);
+    utterance.rate = Number(rateSelect?.value ?? "1");
+    activeUtterance = utterance;
+    setState("speaking");
+    setStatus(`Reading at ${utterance.rate}× speed.`);
+
+    utterance.onend = () => {
+      if (currentGeneration !== generation || activeUtterance !== utterance) return;
+      chunkIndex += 1;
+      window.setTimeout(speakNextChunk, 0);
+    };
+    utterance.onerror = (event) => {
+      if (currentGeneration !== generation || activeUtterance !== utterance) return;
+      if (event.error === "canceled" || event.error === "interrupted") return;
+      finish("Your browser could not read this article aloud.");
+    };
+
+    speech.speak(utterance);
+  };
+
+  const start = () => {
+    const text = getArticleText();
+    chunks = splitIntoChunks(text);
+    if (!chunks.length) {
+      setStatus("There is no article text available to read.");
+      return;
+    }
+
+    generation += 1;
+    speech.cancel();
+    chunkIndex = 0;
+    setStatus("Starting…");
+    speakNextChunk();
+  };
+
+  const pause = () => {
+    speech.pause();
+    setState("paused");
+    setStatus("Reading paused.");
+  };
+
+  const resume = () => {
+    speech.resume();
+    setState("speaking");
+    setStatus(`Reading at ${rateSelect?.value ?? "1"}× speed.`);
+  };
+
+  const reset = () => {
+    generation += 1;
+    speech.cancel();
+    activeUtterance = null;
+    setState("idle");
+    setStatus("Ready to listen.");
+  };
+
+  if (!speech || typeof SpeechSynthesisUtterance === "undefined") {
+    controls?.setAttribute("hidden", "");
+  } else {
+    toggle?.addEventListener("click", () => {
+      if (state === "speaking") pause();
+      else if (state === "paused") resume();
+      else start();
+    });
+    stop?.addEventListener("click", reset);
+    rateSelect?.addEventListener("change", () => {
+      if (state === "speaking" || state === "paused") {
+        setStatus(`Speed set to ${rateSelect.value}×. It will apply to the next sentence.`);
+      }
+    });
+    window.addEventListener("pagehide", reset, { once: true });
+  }
+</script>

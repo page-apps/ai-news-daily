@@ -1,6 +1,7 @@
 ---
 import { getCollection, render } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import ArticleListenControl from "../../components/ArticleListenControl.astro";
 import { toSlug, trustTier } from "../../lib/taxonomy";
 import { baseUrl, withBase } from "../../lib/base-url";
 
@@ -28,6 +29,7 @@ const stories = edition.data.news.map((id) => storyMap.get(id)).filter(Boolean);
       </div>
       <p class="knowledge-meta">{edition.data.type} · {trustTier(edition.data.verified)} · generated {edition.data.generated?.at.toLocaleDateString("en-AU") ?? "without generation metadata"}</p>
       <p class="reader-controls">Use your e-reader’s page or volume buttons, Page Up/Down, or ←/→ to move one screen at a time.</p>
+      <ArticleListenControl />
     </header>
     {stories.length > 0 && <section class="story-index" aria-labelledby="stories-title">
       <p class="eyebrow" id="stories-title">THE CONNECTED STORIES</p>

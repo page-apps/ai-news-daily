@@ -13,7 +13,7 @@ sources:
     resource: "https://github.com/pocketbase/pocketbase/releases/tag/v0.40.0"
     title: "PocketBase v0.40.0"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-08-23T21:07:59.609Z" }
-verified: { by: "human:cmwen", at: "2026-08-23T21:12:09.010Z" }
+verified: { by: "human:cmwen", at: "2026-08-23T21:35:25.196Z" }
 status: stable
 stale_after: 2026-08-24
 ---

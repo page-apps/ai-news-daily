@@ -13,7 +13,7 @@ sources:
     resource: "https://github.com/vercel/ai/releases/tag/%40ai-sdk%2Fdeepgram%403.1.0"
     title: "@ai-sdk/deepgram 3.1.0"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-08-23T21:07:59.610Z" }
-verified: { by: "human:cmwen", at: "2026-08-23T21:12:09.010Z" }
+verified: { by: "human:cmwen", at: "2026-08-23T21:35:25.197Z" }
 status: stable
 stale_after: 2026-08-24
 ---

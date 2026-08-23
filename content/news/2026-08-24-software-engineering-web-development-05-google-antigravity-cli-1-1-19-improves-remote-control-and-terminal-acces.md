@@ -13,7 +13,7 @@ sources:
     resource: "https://github.com/google-antigravity/antigravity-cli/releases/tag/1.1.19"
     title: "Antigravity CLI 1.1.19"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-08-23T21:07:59.608Z" }
-verified: { by: "human:cmwen", at: "2026-08-23T21:12:09.010Z" }
+verified: { by: "human:cmwen", at: "2026-08-23T21:35:25.196Z" }
 status: stable
 stale_after: 2026-08-24
 ---

@@ -13,7 +13,7 @@ sources:
     resource: "https://github.com/vercel/next.js/releases/tag/v16.4.0-canary.2"
     title: "Next.js 16.4.0-canary.2"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-08-23T21:07:59.608Z" }
-verified: { by: "human:cmwen", at: "2026-08-23T21:12:09.010Z" }
+verified: { by: "human:cmwen", at: "2026-08-23T21:35:25.196Z" }
 status: stable
 stale_after: 2026-08-24
 ---

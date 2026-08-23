@@ -39,7 +39,7 @@ sources:
     resource: "https://github.com/cberner/redb/releases/tag/v2.6.3"
     title: "redb v2.6.3"
 generated: { by: "codex/gpt-5.6-sol", at: "2026-08-23T21:07:59.604Z" }
-verified: { by: "human:cmwen", at: "2026-08-23T21:12:09.010Z" }
+verified: { by: "human:cmwen", at: "2026-08-23T21:35:25.195Z" }
 status: stable
 stale_after: 2026-08-24
 news: ["2026-08-24-software-engineering-web-development-01-cline-desktop-v0-0-16-makes-hub-restarts-recoverable","2026-08-24-software-engineering-web-development-02-cline-sdk-v0-0-78-adds-durable-hub-event-replay","2026-08-24-software-engineering-web-development-03-cline-cli-v3-0-57-adds-drain-aware-hub-upgrades","2026-08-24-software-engineering-web-development-04-cline-v4-1-14-refreshes-its-supported-model-catalogue","2026-08-24-software-engineering-web-development-05-google-antigravity-cli-1-1-19-improves-remote-control-and-terminal-acces","2026-08-24-software-engineering-web-development-06-next-js-16-4-0-canary-2-introduces-backend-storage-construction-options","2026-08-24-software-engineering-web-development-07-pocketbase-v0-40-0-hardens-defaults-and-backend-operations","2026-08-24-software-engineering-web-development-08-litellm-v1-98-0-adds-gateway-observability-and-control-features","2026-08-24-software-engineering-web-development-09-vercel-ai-sdk-fixes-deepgram-transcription-and-speech-integration","2026-08-24-software-engineering-web-development-10-redb-v2-6-3-fixes-range-bound-correctness"]

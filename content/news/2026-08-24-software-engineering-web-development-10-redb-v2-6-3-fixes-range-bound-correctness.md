@@ -13,7 +13,7 @@ sources:
     resource: "https://github.com/cberner/redb/releases/tag/v2.6.3"
     title: "redb v2.6.3"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-08-23T21:07:59.610Z" }
-verified: { by: "human:cmwen", at: "2026-08-23T21:12:09.010Z" }
+verified: { by: "human:cmwen", at: "2026-08-23T21:35:25.197Z" }
 status: stable
 stale_after: 2026-08-24
 ---

@@ -13,7 +13,7 @@ sources:
     resource: "https://github.com/cline/cline/releases/tag/sdk/sdk/v0.0.78"
     title: "Cline SDK v0.0.78"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-08-23T21:07:59.607Z" }
-verified: { by: "human:cmwen", at: "2026-08-23T21:12:09.010Z" }
+verified: { by: "human:cmwen", at: "2026-08-23T21:35:25.196Z" }
 status: stable
 stale_after: 2026-08-24
 ---

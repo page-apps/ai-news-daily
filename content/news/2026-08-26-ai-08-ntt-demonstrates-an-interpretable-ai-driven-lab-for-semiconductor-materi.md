@@ -17,7 +17,7 @@ sources:
     title: "NTT、「AI駆動型ラボ」で次世代パワー半導体素材の自律成膜に成功"
     author: "湯野康隆"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-08-25T20:41:57.675Z" }
-verified: { by: "human:cmwen", at: "2026-08-25T23:04:08.261Z" }
+verified: { by: "human:cmwen", at: "2026-08-25T23:05:44.324Z" }
 status: stable
 stale_after: 2026-08-26
 ---

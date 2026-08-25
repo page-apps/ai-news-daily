@@ -21,7 +21,7 @@ sources:
     title: "Perplexity partners with Nvidia to launch Portable Computer"
     author: "VentureBeat"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-08-25T20:41:57.672Z" }
-verified: { by: "human:cmwen", at: "2026-08-25T23:04:08.260Z" }
+verified: { by: "human:cmwen", at: "2026-08-25T23:05:44.324Z" }
 status: stable
 stale_after: 2026-08-26
 ---

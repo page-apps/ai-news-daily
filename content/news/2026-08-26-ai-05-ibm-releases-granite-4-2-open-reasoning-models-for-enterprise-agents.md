@@ -20,7 +20,7 @@ sources:
     resource: "https://modelcap.ai/model/ibm-granite-granite-4-2-3b"
     title: "Granite 4.2 3B weight access"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-08-25T20:41:57.674Z" }
-verified: { by: "human:cmwen", at: "2026-08-25T23:01:57.791Z" }
+verified: { by: "human:cmwen", at: "2026-08-25T23:04:08.261Z" }
 status: stable
 stale_after: 2026-08-26
 ---

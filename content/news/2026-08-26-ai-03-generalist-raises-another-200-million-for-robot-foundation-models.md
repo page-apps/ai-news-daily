@@ -17,7 +17,7 @@ sources:
     resource: "https://siliconangle.com/2026/08/24/robotics-ai-startup-generalist-reportedly-raises-200m/"
     title: "Robotics AI startup Generalist reportedly raises $200M"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-08-25T20:41:57.673Z" }
-verified: { by: "human:cmwen", at: "2026-08-25T23:01:57.790Z" }
+verified: { by: "human:cmwen", at: "2026-08-25T23:04:08.260Z" }
 status: stable
 stale_after: 2026-08-26
 ---

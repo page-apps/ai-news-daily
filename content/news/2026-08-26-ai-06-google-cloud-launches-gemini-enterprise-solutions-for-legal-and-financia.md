@@ -16,7 +16,7 @@ sources:
     resource: "https://www.prnewswire.com/news-releases/google-cloud-launches-gemini-enterprise-for-financial-services-302859186.html"
     title: "Google Cloud Launches Gemini Enterprise for Financial Services"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-08-25T20:41:57.674Z" }
-verified: { by: "human:cmwen", at: "2026-08-25T23:01:57.791Z" }
+verified: { by: "human:cmwen", at: "2026-08-25T23:04:08.261Z" }
 status: stable
 stale_after: 2026-08-26
 ---

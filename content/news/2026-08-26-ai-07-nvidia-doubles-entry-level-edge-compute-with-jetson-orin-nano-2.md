@@ -17,7 +17,7 @@ sources:
     title: "Nvidia doubles compute for entry-level edge robotics with Jetson Orin Nano 2"
     author: "Kyt Dotson"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-08-25T20:41:57.675Z" }
-verified: { by: "human:cmwen", at: "2026-08-25T23:01:57.791Z" }
+verified: { by: "human:cmwen", at: "2026-08-25T23:04:08.261Z" }
 status: stable
 stale_after: 2026-08-26
 ---

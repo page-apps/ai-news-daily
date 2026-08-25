@@ -21,7 +21,7 @@ sources:
     resource: "https://acceleratedunderstanding.com/"
     title: "Accelerated Understanding"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-08-25T20:41:57.673Z" }
-verified: { by: "human:cmwen", at: "2026-08-25T23:01:57.790Z" }
+verified: { by: "human:cmwen", at: "2026-08-25T23:04:08.260Z" }
 status: stable
 stale_after: 2026-08-26
 ---

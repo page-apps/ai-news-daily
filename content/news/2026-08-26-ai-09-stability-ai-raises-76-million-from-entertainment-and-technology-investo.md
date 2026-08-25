@@ -17,7 +17,7 @@ sources:
     resource: "https://stability.ai/news-updates/stability-ai-latest-funding-backed-by-entertainment-industry-biggest-names"
     title: "The Entertainment Industry’s Biggest Names Back Stability AI"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-08-25T20:41:57.676Z" }
-verified: { by: "human:cmwen", at: "2026-08-25T23:01:57.791Z" }
+verified: { by: "human:cmwen", at: "2026-08-25T23:04:08.261Z" }
 status: stable
 stale_after: 2026-08-26
 ---

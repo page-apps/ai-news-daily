@@ -48,16 +48,17 @@ Use GitHub Copilot CLI for either pass by setting `NEWS_RESEARCH_AGENT=copilot` 
 NEWS_RESEARCH_MODEL=gpt-5.6-luna \
 NEWS_WRITER_MODEL=gpt-5.6-sol \
 NEWS_TIMEZONE=Australia/Sydney \
-NEWS_RUN_TIME=06:30 \
+NEWS_RUN_TIME=01:00 \
 pnpm generate:daily
 ```
 
-`NEWS_RUN_TIME` defines the end of the rolling 24-hour research window in `NEWS_TIMEZONE` and defaults to `06:30`, matching the example cron schedule. The generator reads published news and private editorial drafts before each run, supplies their titles and source URLs to the research pass, and rejects stale, repeated or duplicate concepts. If ten qualifying unused developments cannot be verified, it stops instead of padding the edition with older news.
+`NEWS_RUN_TIME` defines the end of the rolling 24-hour research window in `NEWS_TIMEZONE` and defaults to `01:00`, matching the example cron schedule. The generator reads published news and private editorial drafts before each run, supplies their titles and source URLs to the research pass, and rejects stale, repeated or duplicate concepts. If ten qualifying unused developments cannot be verified, it stops instead of padding the edition with older news.
 
-For one daily cron job that runs every configured pipeline at 6:30am Sydney time, use absolute paths to both checkouts:
+For one cron job that runs every configured pipeline at 1:00am Sydney time on weekdays, use absolute paths to both checkouts:
 
 ```cron
-30 6 * * * (cd /path/to/ai-news-daily && /usr/local/bin/pnpm generate:daily -- --all && /usr/local/bin/pnpm publish:draft -- --date=$(date +\%F) --all) >> /tmp/ai-news-daily.log 2>&1
+CRON_TZ=Australia/Sydney
+0 1 * * 1-5 (cd /path/to/ai-news-daily && /usr/local/bin/pnpm generate:daily -- --all && /usr/local/bin/pnpm publish:draft -- --date=$(TZ=Australia/Sydney date +\%F) --all) >> /tmp/ai-news-daily.log 2>&1
 ```
 
 ## Browser approval

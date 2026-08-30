@@ -17,8 +17,8 @@ const dateArg = argumentsList.find((arg) => arg.startsWith("--date="))?.slice(7)
 const date = dateArg ?? new Intl.DateTimeFormat("en-CA", { timeZone: process.env.NEWS_TIMEZONE ?? "Australia/Sydney" }).format(new Date());
 if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Use --date=YYYY-MM-DD.");
 const timezone = process.env.NEWS_TIMEZONE ?? "Australia/Sydney";
-const runTime = process.env.NEWS_RUN_TIME ?? "06:30";
-if (!/^\d{2}:\d{2}$/.test(runTime) || Number(runTime.slice(0, 2)) > 23 || Number(runTime.slice(3)) > 59) throw new Error("NEWS_RUN_TIME must use HH:MM (default: 06:30).");
+const runTime = process.env.NEWS_RUN_TIME ?? "01:00";
+if (!/^\d{2}:\d{2}$/.test(runTime) || Number(runTime.slice(0, 2)) > 23 || Number(runTime.slice(3)) > 59) throw new Error("NEWS_RUN_TIME must use HH:MM (default: 01:00).");
 const requestedPipelineIds = argumentsList.filter((arg) => arg.startsWith("--pipeline=")).map((arg) => arg.slice(11));
 const generateAll = argumentsList.includes("--all");
 if (generateAll && requestedPipelineIds.length) throw new Error("Use either --all or one or more --pipeline=ID arguments.");

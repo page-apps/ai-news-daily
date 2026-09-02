@@ -18,7 +18,7 @@ sources:
     title: "Introducing Hybrid Compute on Mac"
     author: "Perplexity"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-09-02T15:15:47.569Z" }
-verified: { by: "human:cmwen", at: "2026-09-02T21:03:30.830Z" }
+verified: { by: "human:cmwen", at: "2026-09-02T22:32:09.580Z" }
 status: stable
 stale_after: 2026-09-03
 ---

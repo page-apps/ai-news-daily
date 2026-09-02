@@ -2,14 +2,18 @@
 
 ## Purpose
 
-The public Pages site contains only stable, approved editions. A local cron job
-creates drafts in a separate private editorial repository. The deployed PWA
-loads that private bundle only after its owner explicitly connects a
-fine-grained GitHub PAT in the browser.
+The public Pages site contains only stable editions. A local cron job creates
+drafts in a separate private editorial repository. Each draft is either
+approved by the independent auto-review gate or loaded by the owner after
+explicitly connecting a fine-grained GitHub PAT in the browser for manual
+review.
 
 An unlisted URL is not an access-control mechanism. `/review/` is a public
 static shell containing no editorial text; access to draft data is granted by
-the browser-held, repository-limited PAT.
+the browser-held, repository-limited PAT. The private repository maintains
+`drafts/index.json` so the queue can load bundle metadata with one file request
+instead of traversing every historical directory; older repositories use the
+slower directory scan until the index is generated.
 
 ## Repositories
 
@@ -39,8 +43,35 @@ drafts/YYYY-MM-DD/
 `manifest.json` records the date, pipeline identity, unique public article ID,
 ten story IDs, generator versions, and the draft bundle schema version. Every
 Markdown document remains an OKF-inspired concept with provenance, tags,
-categories, generation metadata and `draft` lifecycle state. The legacy
-single-bundle layout is still readable for existing drafts.
+categories, generation metadata and `draft` lifecycle state. The optional
+`autoReview` record stores the reviewer, score, threshold and concise reasons
+for either `auto_approved` or `manual_review`. The legacy single-bundle layout
+is still readable for existing drafts.
+
+## Automatic approval transaction
+
+The local `auto:publish` command is the only automatic publication path:
+
+1. It validates the bundle shape, lifecycle state, exact freshness window,
+   required article sections, word count, source URLs and citation allowlist.
+2. It sends the complete private bundle to an independent read-only reviewer
+   agent. The agent must return `auto_publish`, a score of at least 90 by
+   default, and no blocking issues.
+3. A passing bundle is promoted with exactly one daily file and ten supporting
+   news files in a public-repository commit. The documents receive
+   `verified: { by: machine:auto-review/<agent>/<model>, at: <ISO timestamp> }`.
+4. The private manifest is then closed as `published` and retains the review
+   result for auditability.
+
+If any check fails, the public repository is untouched. The private manifest
+remains `draft` and receives `autoReview.status: manual_review`, so the item
+appears in `/review/`. Existing manual-review items are not retried by the
+scheduled job; use `--retry-manual` deliberately after correcting the cause.
+
+The public and private commits are not atomic. If public promotion succeeds
+but private closure fails, the public commit remains the source of truth and a
+subsequent run safely recognises an identical public bundle instead of
+publishing a second copy.
 
 ## Browser approval transaction
 
@@ -64,13 +95,21 @@ single-bundle layout is still readable for existing drafts.
    not presented for review again. **Discard private draft** instead changes
    only the private manifest to `discarded`; the bundle remains retained but
    is no longer listed for review. The public-repository push triggers the
-   existing GitHub Pages workflow.
+   existing GitHub Pages workflow. An automatically published bundle skips this
+   browser transaction because it has already passed the automatic approval
+   transaction above.
 
 There is no cross-repository atomic Git transaction. If public promotion fails,
 the private reviewed bundle remains intact and the UI offers a retry. If closing
 the private bundle fails after public promotion, the public commit remains the
 source of truth and the UI reports the recovery condition instead of publishing
 another edition silently.
+
+The review client keeps the selected bundle in memory when switching drafts and
+reloads only that bundle’s eleven files. Saving edits reloads those eleven files
+to refresh their revisions; it does not rescan the queue. After publish or
+discard, the current item is removed from the in-memory queue and the next item
+is loaded directly.
 
 ## Credential policy
 

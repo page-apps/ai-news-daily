@@ -30,6 +30,12 @@ done
 repo="$(cd "$repo" && pwd -P)"
 cd "$repo"
 
+# Keep one small metadata file current so the browser review queue does not
+# need to walk every historical date and bundle through the Contents API.
+node "$script_dir/editorial-index.mjs" --repo="$repo"
+index_path="drafts/index.json"
+index_in_commit=false
+
 declare -a bundles
 if [[ "$publish_all" == true ]]; then
   draft_root="drafts/$date"
@@ -63,12 +69,18 @@ for bundle in "${bundles[@]}"; do
   fi
 
   # Stage and commit only this validated bundle; unrelated worktree changes are excluded.
-  git add -- "$bundle"
+  git add -- "$bundle" "$index_path"
+  index_in_commit=true
   mapfile -t staged < <(git diff --cached --name-only -- "$bundle")
   [[ "${#staged[@]}" -eq 12 ]] || { echo "Expected exactly 12 staged bundle files for $bundle; refusing to commit." >&2; exit 1; }
   for path in "${staged[@]}"; do [[ "$path" == "$bundle"/* ]] || { echo "Unexpected staged path: $path" >&2; exit 1; }; done
-  git commit --only -m "Add AI Daily editorial draft: $date (${bundle##*/})" -- "$bundle"
+  git commit --only -m "Add AI Daily editorial draft: $date (${bundle##*/})" -- "$bundle" "$index_path"
 done
+
+if [[ "$index_in_commit" == false && -n "$(git status --porcelain -- "$index_path")" ]]; then
+  git add -- "$index_path"
+  git commit --only -m "Update AI Daily editorial index" -- "$index_path"
+fi
 
 echo "Pulling the latest remote changes before push."
 git pull --rebase --autostash

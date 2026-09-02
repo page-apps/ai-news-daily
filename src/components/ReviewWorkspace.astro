@@ -26,7 +26,7 @@ import { STANDARD_SECURITY_DISCLOSURE } from "@repo-apps/ui";
   <section class="draft-queue" data-draft-queue hidden aria-labelledby="draft-queue-title">
     <div class="queue-heading"><div><p class="eyebrow">PENDING DRAFTS</p><h2 id="draft-queue-title">Choose an article to review.</h2></div><span data-draft-count></span></div>
     <div class="draft-list" data-draft-list></div>
-    <p class="empty-state" data-empty-drafts hidden>No pending drafts. Published and discarded drafts stay in the private editorial repository.</p>
+    <p class="empty-state" data-empty-drafts hidden>No pending drafts. Automatically approved, published and discarded drafts stay out of this queue.</p>
   </section>
 
   <section class="workspace" data-review-workspace hidden aria-labelledby="workspace-title">
@@ -34,6 +34,7 @@ import { STANDARD_SECURITY_DISCLOSURE } from "@repo-apps/ui";
       <div><h2 id="workspace-title">Selected article</h2><p class="workspace-meta" data-edition-meta></p></div>
       <span class="status-pill" data-edition-status>Draft</span>
     </div>
+    <p class="auto-review-note" data-auto-review-note hidden></p>
     <p class="workspace-message" data-review-message role="status" aria-live="polite"></p>
 
     <form class="editor" data-review-form>
@@ -149,6 +150,7 @@ import { STANDARD_SECURITY_DISCLOSURE } from "@repo-apps/ui";
       const button = document.createElement("button"); button.type = "button"; button.className = "draft-card"; button.dataset.draftId = draft.id; button.setAttribute("aria-pressed", String(draft.id === model.selectedDraftId));
       const date = document.createElement("time"); date.textContent = text(draft.date);
       const copy = document.createElement("span"); const title = document.createElement("strong"); title.textContent = text(draft.pipeline?.title || "Untitled pipeline"); const categories = document.createElement("small"); categories.textContent = list(draft.pipeline?.categories).join(" · "); copy.append(title, categories);
+      if (draft.autoReview?.status === "manual_review") { const reason = document.createElement("small"); reason.className = "manual-review-flag"; reason.textContent = draft.autoReview.score == null ? "Manual review · automatic check failed" : `Manual review · score ${draft.autoReview.score}/${draft.autoReview.threshold || 90}`; copy.append(reason); }
       const arrow = document.createElement("i"); arrow.textContent = "→"; button.append(date, copy, arrow); listContainer?.append(button);
     });
   };
@@ -160,7 +162,9 @@ import { STANDARD_SECURITY_DISCLOSURE } from "@repo-apps/ui";
     const edition = model.edition;
     workspace.hidden = false;
     const meta = workspace.querySelector("[data-edition-meta]"); if (meta) meta.textContent = [edition.date, edition.title].filter(Boolean).join(" · ");
-    const status = workspace.querySelector("[data-edition-status]"); if (status) status.textContent = text(edition.status || "Draft");
+    const status = workspace.querySelector("[data-edition-status]"); if (status) status.textContent = edition.autoReview?.status === "manual_review" ? "Needs manual review" : text(edition.status || "Draft");
+    const autoReviewNote = workspace.querySelector("[data-auto-review-note]");
+    if (autoReviewNote) { const review = edition.autoReview; const issues = Array.isArray(review?.blockingIssues) ? review.blockingIssues : []; autoReviewNote.hidden = review?.status !== "manual_review"; autoReviewNote.textContent = review?.status === "manual_review" ? `Automatic review held this draft${review.score == null ? "" : ` at ${review.score}/${review.threshold || 90}`}. ${issues.join(" ") || "Please inspect the article before publishing."}` : ""; }
     form.elements.title.value = text(edition.title); form.elements.summary.value = text(edition.summary || edition.description); form.elements.body.value = text(edition.body); form.elements.categories.value = list(edition.categories).join(", "); form.elements.tags.value = list(edition.tags).join(", ");
     const sources = Array.from(new Map((edition.sources || []).filter((source) => source.resource).map((source) => [source.resource, source])).values());
     form.elements.sources.value = sources.map((source) => source.title ? `${source.title} | ${source.resource}` : text(source.resource)).join("\n");

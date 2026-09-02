@@ -192,7 +192,7 @@ export class GitHubRepositoryClient implements RepositoryClient {
 
     const currentCommit = asRecord(await this.#request(`${this.#repoPath()}/git/commits/${encodeURIComponent(previousHeadSha)}`));
     const baseTreeSha = stringField(asRecord(currentCommit.tree), "sha");
-    await this.#verifyBatchRevisions(input.changes);
+    await this.#verifyBatchRevisions(input.changes, baseTreeSha);
 
     const tree = await Promise.all(input.changes.map(async (change) => {
       const path = validatePath(change.path);
@@ -231,7 +231,31 @@ export class GitHubRepositoryClient implements RepositoryClient {
     };
   }
 
-  async #verifyBatchRevisions(changes: readonly BatchChange[]): Promise<void> {
+  async #verifyBatchRevisions(changes: readonly BatchChange[], baseTreeSha: string): Promise<void> {
+    const expectedChanges = changes.filter((change) => change.expectedSha !== undefined);
+    if (!expectedChanges.length) return;
+    // A recursive tree contains every path and blob SHA without downloading
+    // file contents. Use it for bundle-sized commits; keep the old path for a
+    // one-file edit and for GitHub's rare truncated-tree response.
+    if (expectedChanges.length < 3) {
+      await this.#verifyFileRevisions(expectedChanges);
+      return;
+    }
+    const value = asRecord(await this.#request(`${this.#repoPath()}/git/trees/${encodeURIComponent(baseTreeSha)}?recursive=1`));
+    if (value.truncated === true || !Array.isArray(value.tree)) {
+      await this.#verifyFileRevisions(expectedChanges);
+      return;
+    }
+    const revisions = new Map<string, string>();
+    for (const entry of value.tree) {
+      if (isRecord(entry) && typeof entry.path === "string" && typeof entry.sha === "string") revisions.set(entry.path, entry.sha);
+    }
+    for (const change of expectedChanges) {
+      if (revisions.get(change.path) !== change.expectedSha) throw new ConflictError(change.expectedSha, revisions.has(change.path) ? 409 : 404);
+    }
+  }
+
+  async #verifyFileRevisions(changes: readonly BatchChange[]): Promise<void> {
     await Promise.all(changes.map(async (change) => {
       if (change.expectedSha === undefined) return;
       let current: RepositoryFile;

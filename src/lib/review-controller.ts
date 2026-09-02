@@ -34,6 +34,15 @@ interface DraftManifest {
   files: string[];
   pipeline?: PipelineMetadata;
   publicId?: string;
+  autoReview?: {
+    status?: string;
+    score?: number | null;
+    threshold?: number;
+    reviewer?: string;
+    checkedAt?: string;
+    blockingIssues?: string[];
+    warnings?: string[];
+  };
 }
 interface DraftDescriptor {
   id: string;
@@ -41,6 +50,21 @@ interface DraftDescriptor {
   manifest: DraftManifest;
   manifestFile: RepositoryFile;
   pipeline: PipelineMetadata;
+}
+interface EditorialDraftIndexEntry {
+  id: string;
+  bundlePath: string;
+  manifestPath: string;
+  manifestSha: string;
+  manifest: DraftManifest;
+}
+interface EditorialDraftIndex {
+  schema: string;
+  drafts: EditorialDraftIndexEntry[];
+}
+interface EditorialDraftIndexState {
+  file: RepositoryFile;
+  value: EditorialDraftIndex;
 }
 interface ReviewConnection {
   credentials: CredentialProvider;
@@ -66,7 +90,30 @@ interface DailyEdit {
 let connection: ReviewConnection | undefined;
 let session: ReviewSession | undefined;
 let pendingDrafts: DraftDescriptor[] = [];
+let editorialIndex: EditorialDraftIndexState | undefined;
 let sharedCredentialAvailable = false;
+
+const editorialIndexPath = "drafts/index.json";
+const editorialIndexSchema = "ai-news-daily/editorial-index/v1";
+
+function manifestContent(manifest: DraftManifest): string {
+  return `${JSON.stringify(manifest, null, 2)}\n`;
+}
+
+function indexDescriptor(entry: EditorialDraftIndexEntry): DraftDescriptor {
+  if (!entry || entry.id !== entry.bundlePath || entry.manifestPath !== `${entry.bundlePath}/manifest.json` || !/^[a-f0-9]{40}$/.test(entry.manifestSha)) {
+    throw new Error("The editorial index contains an invalid bundle entry.");
+  }
+  const manifest = validateManifest(entry.manifest, entry.bundlePath);
+  const content = manifestContent(manifest);
+  return {
+    id: entry.id,
+    bundlePath: entry.bundlePath,
+    manifest,
+    manifestFile: { path: entry.manifestPath, sha: entry.manifestSha, content, size: new TextEncoder().encode(content).byteLength },
+    pipeline: pipelineFor(manifest),
+  };
+}
 
 function parseScalar(head: string, key: string): string {
   const match = new RegExp(`^${key}:\\s*(.+)$`, "m").exec(head);
@@ -211,7 +258,38 @@ async function draftDescriptor(editorial: RepositoryClient, bundlePath: string):
   return { id: bundlePath, bundlePath, manifest, manifestFile, pipeline };
 }
 
+async function loadIndexedDrafts(editorial: RepositoryClient): Promise<DraftDescriptor[] | undefined> {
+  let file: RepositoryFile;
+  try {
+    file = await editorial.readFile(editorialIndexPath);
+  } catch (error) {
+    if (error instanceof RepositoryError && error.code === "not-found") {
+      editorialIndex = undefined;
+      return undefined;
+    }
+    throw error;
+  }
+  try {
+    const value = JSON.parse(file.content) as EditorialDraftIndex;
+    if (value.schema !== editorialIndexSchema || !Array.isArray(value.drafts)) throw new Error("Invalid editorial index schema.");
+    const descriptors = value.drafts.map(indexDescriptor);
+    editorialIndex = { file, value };
+    return descriptors;
+  } catch {
+    // Older editorial repositories do not have the index yet. Keep the
+    // original scan as a compatibility path until the next publish run.
+    editorialIndex = undefined;
+    return undefined;
+  }
+}
+
 async function loadPendingDrafts(editorial: RepositoryClient): Promise<DraftDescriptor[]> {
+  const indexed = await loadIndexedDrafts(editorial);
+  if (indexed) {
+    return indexed
+      .filter((draft) => draft.manifest.status === "draft")
+      .sort((left, right) => right.manifest.date.localeCompare(left.manifest.date) || left.pipeline.title.localeCompare(right.pipeline.title));
+  }
   const entries = await editorial.list("drafts");
   const dates = entries.filter((entry) => entry.type === "dir" && /^\d{4}-\d{2}-\d{2}$/.test(entry.name)).map((entry) => entry.name).sort();
   const candidates: DraftDescriptor[] = [];
@@ -241,7 +319,7 @@ async function loadDraft(editorial: RepositoryClient, descriptor: DraftDescripto
 
 function model() {
   return {
-    drafts: pendingDrafts.map((draft) => ({ id: draft.id, date: draft.manifest.date, pipeline: draft.pipeline, status: draft.manifest.status })),
+    drafts: pendingDrafts.map((draft) => ({ id: draft.id, date: draft.manifest.date, pipeline: draft.pipeline, status: draft.manifest.status, autoReview: draft.manifest.autoReview })),
     selectedDraftId: session?.descriptor.id,
     edition: session ? {
       ...session.daily.metadata,
@@ -249,6 +327,7 @@ function model() {
       sources: uniqueSources(session.daily.metadata.sources),
       supportingConcepts: session.stories.length,
       pipeline: session.descriptor.pipeline,
+      autoReview: session.manifest.autoReview,
     } : undefined,
   };
 }
@@ -287,6 +366,24 @@ async function refreshDrafts(preferredId?: string): Promise<void> {
   emitModel();
 }
 
+async function loadSelectedDraft(descriptor: DraftDescriptor): Promise<void> {
+  if (!connection) return;
+  const loaded = await loadDraft(connection.editorial, descriptor);
+  session = { ...connection, descriptor, ...loaded };
+  emitModel();
+}
+
+async function removeCurrentDraft(current: ReviewSession): Promise<void> {
+  pendingDrafts = pendingDrafts.filter((draft) => draft.id !== current.descriptor.id);
+  const next = pendingDrafts[0];
+  if (!next) {
+    session = undefined;
+    emitModel();
+    return;
+  }
+  await loadSelectedDraft(next);
+}
+
 function repositoryClients(credentials: CredentialProvider) {
   const repositories = repositoryConfigFromIdentities(
     `${reviewConfig.editorialRepository}#${reviewConfig.editorialBranch}`,
@@ -303,8 +400,9 @@ async function finishConnection(credentials: CredentialProvider): Promise<void> 
   if (login.toLowerCase() !== reviewConfig.reviewerLogin.toLowerCase()) throw new Error(`This review area is restricted to ${reviewConfig.reviewerLogin}. Connected as ${login}.`);
   if (!access.editorial.canRead || !access.editorial.canWrite || !access.site.canWrite) throw new Error("The PAT needs Contents: read and write for ai-news-daily and ai-news-daily-editorial.");
   connection = { credentials, editorial: clients.editorial, site: clients.site };
-  await refreshDrafts();
   setSignedIn(true, login);
+  setStatus("Loading private drafts…", { busy: true });
+  await refreshDrafts();
   setStatus(session
     ? `Ready to review ${pendingDrafts.length} pending article${pendingDrafts.length === 1 ? "" : "s"}.`
     : "No pending editorial drafts. Published and discarded drafts remain private in the editorial repository.");
@@ -411,7 +509,9 @@ async function selectDraft(id: string): Promise<void> {
   if (session && session.descriptor.id !== id && hasUnsavedEdits(session) && !window.confirm("Switching articles will discard unsaved edits in this browser. Continue?")) return;
   try {
     setStatus("Loading the selected draft…", { busy: true });
-    await refreshDrafts(id);
+    const descriptor = pendingDrafts.find((draft) => draft.id === id);
+    if (!descriptor) return;
+    await loadSelectedDraft(descriptor);
     if (session) setStatus(`Reviewing ${session.descriptor.pipeline.title} for ${session.manifest.date}.`);
   } catch (error) {
     setStatus(error instanceof Error ? error.message : "Could not load the selected draft.", { error: true });
@@ -427,7 +527,7 @@ async function saveEdits(): Promise<void> {
     message: `Review ${current.descriptor.pipeline.title} editorial draft: ${current.manifest.date}`,
     changes: changed.map((document) => ({ operation: "write" as const, path: document.path, content: document.content, expectedSha: document.sha })),
   });
-  await refreshDrafts(current.descriptor.id);
+  await loadSelectedDraft(current.descriptor);
 }
 
 function stableDocument(content: string, reviewer: string): string {
@@ -444,6 +544,49 @@ async function publicExpectedSha(client: RepositoryClient, path: string): Promis
   }
 }
 
+interface EditorialIndexUpdate {
+  value: EditorialDraftIndex;
+  content: string;
+  sha: string;
+  change: { operation: "write"; path: string; content: string; expectedSha: string };
+}
+
+async function gitBlobSha(content: string): Promise<string> {
+  const bytes = new TextEncoder().encode(content);
+  const prefix = new TextEncoder().encode(`blob ${bytes.byteLength}\0`);
+  const input = new Uint8Array(prefix.byteLength + bytes.byteLength);
+  input.set(prefix);
+  input.set(bytes, prefix.byteLength);
+  const digest = await globalThis.crypto.subtle.digest("SHA-1", input);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function editorialIndexUpdate(current: ReviewSession, manifest: DraftManifest): Promise<EditorialIndexUpdate | undefined> {
+  if (!editorialIndex) return undefined;
+  const existing = editorialIndex.value.drafts.find((draft) => draft.id === current.descriptor.id);
+  if (!existing) throw new Error("The editorial index no longer contains the selected draft. Reload the review page.");
+  const manifestSha = await gitBlobSha(manifestContent(manifest));
+  const nextDrafts = editorialIndex.value.drafts.map((draft) => draft.id === current.descriptor.id
+    ? { ...draft, manifest, manifestSha }
+    : draft);
+  const value = { ...editorialIndex.value, drafts: nextDrafts };
+  const content = `${JSON.stringify(value, null, 2)}\n`;
+  return {
+    value,
+    content,
+    sha: await gitBlobSha(content),
+    change: { operation: "write", path: editorialIndex.file.path, content, expectedSha: editorialIndex.file.sha },
+  };
+}
+
+function applyEditorialIndexUpdate(update: EditorialIndexUpdate | undefined): void {
+  if (!update || !editorialIndex) return;
+  editorialIndex = {
+    value: update.value,
+    file: { ...editorialIndex.file, content: update.content, sha: update.sha, size: new TextEncoder().encode(update.content).byteLength },
+  };
+}
+
 function publicEditionId(current: ReviewSession): string {
   const value = current.manifest.publicId ?? current.manifest.date;
   if (!/^\d{4}-\d{2}-\d{2}(?:--[a-z0-9][a-z0-9-]*)?$/.test(value)) throw new Error("The draft has an unsafe public article id.");
@@ -453,13 +596,16 @@ function publicEditionId(current: ReviewSession): string {
 async function closePrivateBundle(current: ReviewSession): Promise<void> {
   const documents = [current.daily, ...current.stories];
   const manifest = { ...current.manifest, status: "published", publishedAt: new Date().toISOString(), publishedBy: `human:${reviewConfig.reviewerLogin}` };
+  const indexUpdate = await editorialIndexUpdate(current, manifest);
   await current.editorial.batchCommit({
     message: `Close reviewed ${current.descriptor.pipeline.title} editorial draft: ${current.manifest.date}`,
     changes: [
       ...documents.map((document) => ({ operation: "write" as const, path: document.path, content: stableDocument(document.content, reviewConfig.reviewerLogin), expectedSha: document.sha })),
       { operation: "write" as const, path: current.manifestFile.path, content: `${JSON.stringify(manifest, null, 2)}\n`, expectedSha: current.manifestFile.sha },
+      ...(indexUpdate ? [indexUpdate.change] : []),
     ],
   });
+  applyEditorialIndexUpdate(indexUpdate);
 }
 
 async function discardCurrentDraft(): Promise<void> {
@@ -471,11 +617,16 @@ async function discardCurrentDraft(): Promise<void> {
   try {
     setStatus("Marking this private draft as discarded…", { busy: true });
     const manifest = { ...current.manifest, status: "discarded", discardedAt: new Date().toISOString(), discardedBy: `human:${reviewConfig.reviewerLogin}` };
+    const indexUpdate = await editorialIndexUpdate(current, manifest);
     await current.editorial.batchCommit({
       message: `Discard ${current.descriptor.pipeline.title} editorial draft: ${current.manifest.date}`,
-      changes: [{ operation: "write" as const, path: current.manifestFile.path, content: `${JSON.stringify(manifest, null, 2)}\n`, expectedSha: current.manifestFile.sha }],
+      changes: [
+        { operation: "write" as const, path: current.manifestFile.path, content: `${JSON.stringify(manifest, null, 2)}\n`, expectedSha: current.manifestFile.sha },
+        ...(indexUpdate ? [indexUpdate.change] : []),
+      ],
     });
-    await refreshDrafts();
+    applyEditorialIndexUpdate(indexUpdate);
+    await removeCurrentDraft(current);
     setStatus(`Discarded the private ${current.descriptor.pipeline.title} draft. It will not appear in the review queue again.`, { success: true });
   } catch (error) {
     setStatus(error instanceof Error ? error.message : "Discarding failed. The private draft remains available.", { error: true });
@@ -506,7 +657,7 @@ async function approveAndPublish(): Promise<void> {
     const result = await current.site.batchCommit({ message: `Publish ${current.descriptor.pipeline.title}: ${current.manifest.date}`, changes });
     try {
       await closePrivateBundle(current);
-      await refreshDrafts();
+      await removeCurrentDraft(current);
       setStatus(`Published ${current.descriptor.pipeline.title} in ${result.commitSha.slice(0, 7)}. GitHub Pages is rebuilding now.`, { success: true });
     } catch {
       setStatus(`Published ${current.descriptor.pipeline.title} in ${result.commitSha.slice(0, 7)}, but could not close the private draft. Reconnect before approving another edition.`, { success: true, error: true });

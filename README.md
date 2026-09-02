@@ -20,6 +20,7 @@ Categories are deliberately limited to nine stable reader-facing groups: Models 
 3. Set public repository variables: `NEWS_EDITORIAL_REPOSITORY`, `NEWS_REVIEWER_LOGIN`, and optionally `NEWS_EDITORIAL_BRANCH` / `NEWS_PUBLIC_BRANCH`. These are repository names and a GitHub login—not secrets.
 4. Install dependencies with `pnpm install`, then edit `prompts/preferences.md` to establish the editorial lens you want.
 5. Copy `.env.example` to `.env` and set the two repository names plus your GitHub login. `.env` is ignored and is loaded by the daily generator locally.
+6. When upgrading an existing editorial repository, run `pnpm sync:editorial-index` once from this checkout, then commit and push `drafts/index.json` in the private repository. Future draft publication and review actions maintain it automatically.
 
 The deploy workflow only builds stable Markdown already in the public repository. Research credentials and draft text never enter GitHub Actions or the Pages artifact.
 
@@ -38,9 +39,10 @@ pnpm publish:draft -- --date=YYYY-MM-DD --pipeline=software-engineering-web-deve
 # Run and publish every configured pipeline.
 pnpm generate:daily -- --all
 pnpm publish:draft -- --date=YYYY-MM-DD --all
+pnpm auto:publish -- --date=YYYY-MM-DD --all
 ```
 
-Each pipeline writes an isolated private bundle at `drafts/YYYY-MM-DD/PIPELINE-ID/`. A pipeline’s public article is published as `content/daily/YYYY-MM-DD--PIPELINE-ID.md`, so multiple articles can be released on the same day without colliding. Human review happens at `/review/` in the deployed app, never in the terminal.
+Each pipeline writes an isolated private bundle at `drafts/YYYY-MM-DD/PIPELINE-ID/`. A pipeline’s public article is published as `content/daily/YYYY-MM-DD--PIPELINE-ID.md`, so multiple articles can be released on the same day without colliding. The private repository also maintains `drafts/index.json`, a metadata-only queue index that keeps the browser review screen from walking historical bundle directories. By default, every bundle remains private for human review at `/review/`. With `pnpm auto:publish`, only bundles that pass deterministic checks and the independent reviewer at `NEWS_AUTO_APPROVAL_THRESHOLD` (90 by default) are published; failed or uncertain bundles remain private and are annotated with their reasons.
 
 Use GitHub Copilot CLI for either pass by setting `NEWS_RESEARCH_AGENT=copilot` or `NEWS_WRITER_AGENT=copilot`. The models and timezone are all configurable:
 
@@ -58,8 +60,10 @@ For one cron job that runs every configured pipeline at 1:00am Sydney time on we
 
 ```cron
 CRON_TZ=Australia/Sydney
-0 1 * * 1-5 (cd /path/to/ai-news-daily && /usr/local/bin/pnpm generate:daily -- --all && /usr/local/bin/pnpm publish:draft -- --date=$(TZ=Australia/Sydney date +\%F) --all) >> /tmp/ai-news-daily.log 2>&1
+0 1 * * 1-5 (cd /path/to/ai-news-daily && /usr/local/bin/pnpm generate:daily -- --all && /usr/local/bin/pnpm publish:draft -- --date=$(TZ=Australia/Sydney date +\%F) --all && /usr/local/bin/pnpm auto:publish -- --date=$(TZ=Australia/Sydney date +\%F) --all) >> /tmp/ai-news-daily.log 2>&1
 ```
+
+`auto:publish` exits with code 2 when a new bundle requires manual review, which makes the cron job observable by standard email or monitoring. Use `--dry-run` to exercise the gate without changing either repository. Use `--retry-manual` only after changing the draft or reviewer configuration.
 
 ## Browser approval
 
@@ -67,7 +71,7 @@ Set up a fine-grained, expiring GitHub PAT once in the [Page Apps hub](https://p
 
 When a hub or app credential is available, a **Review** link appears in the site header. The review page independently verifies the configured GitHub login and read/write access to both repositories, then lists every pending private pipeline draft, including multiple articles from the same day. You review one complete article—not ten story cards—with the full body and citation list visible. Title, introduction, article Markdown, categories, tags and sources remain editable. The ten supporting news concepts are retained for connected-news navigation and publish automatically with that article.
 
-**Approve article & publish** first saves your edits to the private draft, then records `human:<GitHub login>` verification, promotes that article and its ten supporting concepts to `stable` in one public-repository commit, and triggers Pages deployment. **Discard private draft** retains the generated bundle in the editorial repository but removes it from the review queue. The UI reports each phase and the resulting commit. Revision conflicts are shown instead of silently overwriting a newer draft.
+**Approve article & publish** first saves your edits to the private draft, then records `human:<GitHub login>` verification, promotes that article and its ten supporting concepts to `stable` in one public-repository commit, and triggers Pages deployment. Automatically published articles carry `machine:auto-review/<agent>/<model>` provenance; they are visible in the public app as machine-confirmed rather than human-reviewed. **Discard private draft** retains the generated bundle in the editorial repository but removes it from the review queue. The UI reports each phase and the resulting commit. Revision conflicts are shown instead of silently overwriting a newer draft.
 
 Read [REVIEW-ARCHITECTURE.md](docs/REVIEW-ARCHITECTURE.md) for the transaction and security model.
 

@@ -5,6 +5,7 @@
 .security-badge { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--rule)); }
 .review-page h1 { font-size: clamp(2.8rem, 7vw, 5.4rem); font-weight: 500; letter-spacing: -.06em; line-height: .94; margin: 30px 0 16px; max-width: 13ch; }
 .review-lede { color: var(--muted); font-size: 1.14rem; line-height: 1.55; margin: 0; max-width: 47rem; }
+.auto-review-note { border-left: 3px solid var(--accent); color: var(--muted); line-height: 1.5; margin: 18px 0 0; padding-left: 12px; }
 .signed-out { border: 1px solid var(--rule); margin-top: 42px; max-width: 780px; padding: 28px; }
 .signed-out h2 { font-size: 1.55rem; letter-spacing: -.03em; margin: 0 0 11px; }
 .signed-out > p { color: var(--muted); line-height: 1.55; }
@@ -29,6 +30,7 @@ button:disabled { cursor: wait; opacity: .58; }
 .draft-card time, .draft-card small { color: var(--muted); font: .68rem/1.4 ui-sans-serif, system-ui, sans-serif; text-transform: uppercase; }
 .draft-card strong { display: block; font-size: 1rem; line-height: 1.25; }
 .draft-card small { display: block; margin-top: 4px; }
+.draft-card .manual-review-flag { color: var(--accent); font-weight: 700; }
 .draft-card i { font-style: normal; }
 .empty-state { color: var(--muted); font-size: .9rem; margin: 18px 0 0; }
 .workspace { margin-top: 48px; }

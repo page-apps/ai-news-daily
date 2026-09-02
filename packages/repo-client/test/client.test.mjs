@@ -161,6 +161,38 @@ test("batch commit creates blobs, a base tree, one commit, and advances the self
   assert.equal(result.commitSha, "commit-2");
 });
 
+test("large batch revision checks use the recursive tree without downloading file contents", async () => {
+  const requests = [];
+  const api = client(async (url, init = {}) => {
+    requests.push({ url, method: init.method ?? "GET" });
+    if (url.endsWith("/git/ref/heads/main")) return response(200, { object: { sha: "head-1" } });
+    if (url.endsWith("/git/commits/head-1")) return response(200, { tree: { sha: "tree-1" } });
+    if (url.includes("/git/trees/tree-1?recursive=1")) return response(200, {
+      truncated: false,
+      tree: [
+        { path: "data/a", type: "blob", sha: "a-old" },
+        { path: "data/b", type: "blob", sha: "b-old" },
+        { path: "data/c", type: "blob", sha: "c-old" },
+      ],
+    });
+    if (url.endsWith("/git/blobs")) return response(201, { sha: "new-blob" });
+    if (url.endsWith("/git/trees")) return response(201, { sha: "tree-2" });
+    if (url.endsWith("/git/commits") && init.method === "POST") return response(201, { sha: "commit-2" });
+    if (url.endsWith("/git/refs/heads/main")) return response(200, { object: { sha: "commit-2" } });
+    throw new Error(`Unexpected URL: ${url}`);
+  });
+  await api.batchCommit({
+    message: "Large atomic update",
+    changes: [
+      { operation: "write", path: "data/a", content: "a", expectedSha: "a-old" },
+      { operation: "write", path: "data/b", content: "b", expectedSha: "b-old" },
+      { operation: "write", path: "data/c", content: "c", expectedSha: "c-old" },
+    ],
+  });
+  assert.equal(requests.filter(({ url }) => url.includes("/git/trees/tree-1?recursive=1")).length, 1);
+  assert.equal(requests.filter(({ url }) => url.includes("/contents/")).length, 0);
+});
+
 test("batch commit rejects an unexpected branch head before creating objects", async () => {
   let calls = 0;
   const api = client(async () => {

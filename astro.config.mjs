@@ -3,10 +3,13 @@ import mdx from "@astrojs/mdx";
 import pwa from "@vite-pwa/astro";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import { latestStableOfflineContent } from "./scripts/offline-content.mjs";
 
 const [owner = "local", repository = "ai-news-daily"] = (process.env.GITHUB_REPOSITORY ?? "local/ai-news-daily").split("/");
 const onGitHubPages = process.env.GITHUB_ACTIONS === "true";
 const isUserSite = repository === `${owner}.github.io`;
+const latestOffline = await latestStableOfflineContent(new URL("./content", import.meta.url));
+const offlinePagePatterns = latestOffline.routes.map((route) => `${route}/index.html`);
 
 export default defineConfig({
   output: "static",
@@ -32,8 +35,30 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
-        navigateFallback: "index.html"
+        // Keep installation small for slower e-readers. Historical editions and
+        // topic indexes remain available online and are cached after a visit.
+        globPatterns: [
+          "index.html",
+          "registerSW.js",
+          "icons/**/*.{svg,png}",
+          "_astro/*.css",
+          "_astro/*.woff2",
+          "_astro/BaseLayout*.js",
+          "_astro/github-repositories*.js",
+          "_astro/preload-helper*.js",
+          ...offlinePagePatterns,
+        ],
+        navigateFallback: null,
+        runtimeCaching: [{
+          urlPattern: ({ request }) => request.mode === "navigate",
+          handler: "NetworkFirst",
+          options: {
+            cacheName: "ai-daily-visited-pages",
+            networkTimeoutSeconds: 5,
+            expiration: { maxEntries: 20, maxAgeSeconds: 7 * 24 * 60 * 60 },
+            cacheableResponse: { statuses: [0, 200] },
+          },
+        }]
       }
     })
   ],

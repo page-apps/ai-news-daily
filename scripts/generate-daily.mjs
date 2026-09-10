@@ -83,19 +83,20 @@ const selectedPipelines = generateAll
     ? requestedPipelineIds.map((id) => configuredPipelines.find((pipeline) => pipeline.id === id) ?? (() => { throw new Error(`Unknown pipeline '${id}'. Check prompts/pipelines.json.`); })())
     : [defaultPipeline];
 
-function run(command, args) {
+function run(command, args, input = null) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd: root, stdio: ["ignore", "pipe", "pipe"], env: process.env });
+    const child = spawn(command, args, { cwd: root, stdio: [input === null ? "ignore" : "pipe", "pipe", "pipe"], env: process.env });
     let stdout = "", stderr = "";
     child.stdout.on("data", (chunk) => stdout += chunk);
     child.stderr.on("data", (chunk) => stderr += chunk);
     child.on("error", (error) => reject(new Error(`Could not start ${command}: ${error.message}`)));
     child.on("close", (code) => code === 0 ? resolve(stdout.trim()) : reject(new Error(`${command} exited ${code}: ${stderr.trim()}`)));
+    if (input !== null) child.stdin.end(input);
   });
 }
 
 function ask(agent, model, prompt) {
-  if (agent === "codex") return run("codex", ["exec", "--skip-git-repo-check", "--sandbox", "read-only", "--model", model, prompt]);
+  if (agent === "codex") return run("codex", ["exec", "--skip-git-repo-check", "--sandbox", "read-only", "--model", model, "-"], prompt);
   if (agent === "copilot") return run("copilot", ["-p", prompt, "--model", model]);
   throw new Error(`Unsupported NEWS_*_AGENT '${agent}'. Use 'codex' or 'copilot'.`);
 }

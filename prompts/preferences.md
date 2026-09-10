@@ -17,6 +17,12 @@ Prioritise genuinely new, consequential developments in these areas:
 
 Do not force every edition to include every topic. Select the ten strongest developments from the generator's explicit rolling 24-hour window. Verify the source's publication or material-update time; never fill the edition with an older story, a resurfaced report or a previously accumulated concept. Give preference to stories that illuminate a capability change, a product consequence or a durable trend.
 
+Treat the generator-provided freshness window as an exact UTC interval: inclusive at the start and exclusive at the end. A story qualifies only when its triggering announcement or material update first occurred inside that interval.
+Require a source page with a publication or update timestamp that can be verified down to the time and timezone (a date without a verifiable time is insufficient), and preserve that triggering time as `publishedAt` with an explicit timezone. Do not infer or approximate missing times, and exclude stories whose new interpretation depends on an older announcement. A later report qualifies only when it is the first public announcement of the development or the source explicitly records a new material update inside the window.
+For the dedicated Software Engineering & Web Development pipeline, include only developments whose primary consequence is how software or web products are built, tested, deployed, observed, secured or operated. Exclude general AI, business, hardware, policy and consumer stories unless their direct developer-workflow consequence is the central change.
+If fewer than ten developments survive these checks, return only the qualifying developments; never use stale, previously accumulated or weakly related filler to reach the requested count.
+Keep the broad AI pipeline focused on models, deployment, security, physical AI, infrastructure, policy and durable industry trends. Route stories whose primary significance is ordinary software-engineering or web-development practice to the dedicated pipeline.
+
 ## Editorial standards
 
 - Prioritise primary sources, original research, evaluations, filings, product releases, incident reports and policy documents.

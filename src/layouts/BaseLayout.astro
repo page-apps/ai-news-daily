@@ -87,9 +87,9 @@ const { title = "AI Daily Brief", description = "A thoughtful daily AI news brie
                 if (worker.state === "redundant") reject(new Error("Service worker update was replaced."));
               }, { once: false }));
             }
-            // The generated worker precaches every published edition and story before
-            // installation, so a fully installed worker has a complete offline copy.
-            setSyncStatus("Latest news saved for offline reading.");
+            // The worker keeps the newest edition day and its connected stories,
+            // avoiding a full-archive download on slower reading devices.
+            setSyncStatus("Latest editions and stories saved for offline reading.");
           } catch {
             setSyncStatus("Could not sync right now. Please try again while connected.");
           } finally {

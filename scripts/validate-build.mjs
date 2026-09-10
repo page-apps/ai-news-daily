@@ -1,5 +1,6 @@
 import { access, readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { latestStableOfflineContent } from "./offline-content.mjs";
 
 const dist = resolve("dist");
 await Promise.all(["index.html", "review/index.html", "manifest.webmanifest", "sw.js", "registerSW.js"].map((path) => access(resolve(dist, path))));
@@ -34,14 +35,24 @@ const serviceWorker = await readFile(resolve(dist, "sw.js"), "utf8");
 const offlineReadingRoutes = (await files(dist))
   .filter((path) => /\/(?:daily|news)\/.+\/index\.html$/.test(path))
   .map((path) => path.slice(dist.length + 1).replace(/\/index\.html$/, ""));
-for (const route of offlineReadingRoutes) {
-  if (!serviceWorker.includes(`url:"${route}"`)) throw new Error(`Published reading route is not precached for offline use: ${route}`);
+const latestOffline = await latestStableOfflineContent(resolve("content"));
+for (const route of latestOffline.routes) {
+  if (!serviceWorker.includes(`url:"${route}"`)) throw new Error(`Latest reading route is not precached for offline use: ${route}`);
+}
+const historicalRoutes = offlineReadingRoutes.filter((route) => !latestOffline.routes.includes(route));
+for (const route of historicalRoutes) {
+  if (serviceWorker.includes(`url:"${route}"`)) throw new Error(`Historical reading route should not delay offline sync: ${route}`);
+}
+if (/url:"topics(?:\/|\")/.test(serviceWorker) || /url:"review(?:\/|\")/.test(serviceWorker)) {
+  throw new Error("Browse and review pages should not delay the latest-news offline sync.");
 }
 if (!serviceWorker.includes('directoryIndex:"index.html"')) throw new Error("The service worker cannot resolve clean reading URLs offline.");
+if (serviceWorker.includes("createHandlerBoundToURL")) throw new Error("Uncached article navigation must not fall back to the home page.");
+if (!serviceWorker.includes("ai-daily-visited-pages")) throw new Error("Visited reading pages need a bounded runtime cache.");
 
 const reviewHtml = await readFile(resolve(dist, "review/index.html"), "utf8");
 for (const required of ["Review independent editions", "PENDING DRAFTS", "FULL ARTICLE", "CITATIONS", "Discard private draft", "Approve article &amp; publish"]) {
   if (!reviewHtml.includes(required)) throw new Error(`Review artifact is missing required UI copy: ${required}`);
 }
 
-console.log(`Validated the full-article review shell and ${textAssets.length} public text assets without a PAT, draft fixture, or broken Pages path.`);
+console.log(`Validated the review shell and a focused offline set for ${latestOffline.editionIds.length} latest edition(s) and ${latestOffline.storyIds.length} stories.`);

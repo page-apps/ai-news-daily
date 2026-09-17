@@ -13,7 +13,7 @@ sources:
     resource: "https://github.com/anthropics/claude-code/releases/tag/v2.1.273"
     title: "Release v2.1.273"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-09-16T15:28:31.169Z" }
-verified: { by: "human:cmwen", at: "2026-09-17T01:04:33.227Z" }
+verified: { by: "human:cmwen", at: "2026-09-17T01:06:24.116Z" }
 status: stable
 stale_after: 2026-09-17
 ---

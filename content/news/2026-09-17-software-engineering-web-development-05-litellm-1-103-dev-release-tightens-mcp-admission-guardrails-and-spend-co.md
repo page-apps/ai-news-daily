@@ -13,7 +13,7 @@ sources:
     resource: "https://github.com/BerriAI/litellm/releases/tag/v1.103.0-dev.1"
     title: "Release v1.103.0-dev.1"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-09-16T15:28:31.171Z" }
-verified: { by: "human:cmwen", at: "2026-09-17T01:04:33.228Z" }
+verified: { by: "human:cmwen", at: "2026-09-17T01:06:24.117Z" }
 status: stable
 stale_after: 2026-09-17
 ---

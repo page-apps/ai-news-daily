@@ -13,7 +13,7 @@ sources:
     resource: "https://github.com/openai/openai-node/releases/tag/v7.16.0"
     title: "Release v7.16.0"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-09-16T15:28:31.171Z" }
-verified: { by: "human:cmwen", at: "2026-09-17T01:04:33.228Z" }
+verified: { by: "human:cmwen", at: "2026-09-17T01:06:24.116Z" }
 status: stable
 stale_after: 2026-09-17
 ---

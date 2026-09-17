@@ -16,7 +16,7 @@ sources:
     resource: "https://www.cohesity.com/newsroom/press/cohesity-introduces-agent-resilience-to-protect-ai-agent-infrastructure/"
     title: "Cohesity Introduces Agent Resilience to Protect and Recover AI Agent Infrastructure"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-09-16T15:28:31.173Z" }
-verified: { by: "human:cmwen", at: "2026-09-17T01:04:33.228Z" }
+verified: { by: "human:cmwen", at: "2026-09-17T01:06:24.117Z" }
 status: stable
 stale_after: 2026-09-17
 ---

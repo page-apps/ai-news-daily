@@ -17,7 +17,7 @@ sources:
     title: "Introducing Positron on Amazon SageMaker"
     author: "James Blair"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-09-16T15:28:31.172Z" }
-verified: { by: "human:cmwen", at: "2026-09-17T01:04:33.228Z" }
+verified: { by: "human:cmwen", at: "2026-09-17T01:06:24.117Z" }
 status: stable
 stale_after: 2026-09-17
 ---

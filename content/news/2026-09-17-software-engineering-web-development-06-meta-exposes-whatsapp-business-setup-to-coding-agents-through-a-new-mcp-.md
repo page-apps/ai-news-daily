@@ -14,7 +14,7 @@ sources:
     title: "Meta now lets AI agents handle the boring parts of WhatsApp Business setup"
     author: "Sarah Perez"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-09-16T15:28:31.171Z" }
-verified: { by: "human:cmwen", at: "2026-09-17T01:04:33.228Z" }
+verified: { by: "human:cmwen", at: "2026-09-17T01:06:24.117Z" }
 status: stable
 stale_after: 2026-09-17
 ---

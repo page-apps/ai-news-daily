@@ -13,7 +13,7 @@ sources:
     resource: "https://www.newswire.ca/news-releases/ab-tasty-and-vwo-unite-under-wingify-launching-a-unified-platform-new-brand-identity-and-a-website-827260962.html"
     title: "AB Tasty and VWO Unite Under Wingify, Launching a Unified Platform, New Brand Identity, and a Website"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-09-16T15:28:31.173Z" }
-verified: { by: "human:cmwen", at: "2026-09-17T01:04:33.228Z" }
+verified: { by: "human:cmwen", at: "2026-09-17T01:06:24.117Z" }
 status: stable
 stale_after: 2026-09-17
 ---

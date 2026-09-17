@@ -13,7 +13,7 @@ sources:
     resource: "https://github.com/mastra-ai/mastra/releases/tag/@mastra%2Fcore@1.67.0"
     title: "Mastra 1.67.0 release"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-09-16T15:28:31.170Z" }
-verified: { by: "human:cmwen", at: "2026-09-17T01:04:33.227Z" }
+verified: { by: "human:cmwen", at: "2026-09-17T01:06:24.116Z" }
 status: stable
 stale_after: 2026-09-17
 ---

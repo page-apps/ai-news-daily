@@ -16,7 +16,7 @@ sources:
     resource: "https://azure.microsoft.com/en-us/blog/content-type/announcements/"
     title: "GPT-6 Astra, Sol, and Luna: For production agents in Microsoft Foundry"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-09-23T15:10:54.626Z" }
-verified: { by: "human:cmwen", at: "2026-09-23T22:28:57.401Z" }
+verified: { by: "human:cmwen", at: "2026-09-25T07:56:04.054Z" }
 status: stable
 stale_after: 2026-09-24
 ---

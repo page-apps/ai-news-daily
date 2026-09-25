@@ -16,7 +16,7 @@ sources:
     resource: "https://openai.com/index/better-prompt-caching-for-gpt-6/"
     title: "Better prompt caching for GPT-6"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-09-23T15:10:54.625Z" }
-verified: { by: "human:cmwen", at: "2026-09-23T22:28:57.401Z" }
+verified: { by: "human:cmwen", at: "2026-09-25T07:56:04.054Z" }
 status: stable
 stale_after: 2026-09-24
 ---

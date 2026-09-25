@@ -17,7 +17,7 @@ sources:
     title: "Anthropic Launches Claude Opus 5.5 With Fable-Level Performance at a Lower Price"
     author: "Juli Clover"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-09-23T15:10:54.624Z" }
-verified: { by: "human:cmwen", at: "2026-09-23T22:28:57.401Z" }
+verified: { by: "human:cmwen", at: "2026-09-25T07:56:04.054Z" }
 status: stable
 stale_after: 2026-09-24
 ---

@@ -13,7 +13,7 @@ sources:
     resource: "https://www.prnewswire.com/news-releases/collibra-launches-new-capabilities-to-reduce-the-hallucination-tax-on-enterprise-ai-302886404.html"
     title: "Collibra Launches New Capabilities to Reduce the Hallucination Tax on Enterprise AI"
 generated: { by: "codex/gpt-5.6-luna", at: "2026-09-23T15:10:54.626Z" }
-verified: { by: "human:cmwen", at: "2026-09-23T22:28:57.401Z" }
+verified: { by: "human:cmwen", at: "2026-09-25T07:56:04.054Z" }
 status: stable
 stale_after: 2026-09-24
 ---
